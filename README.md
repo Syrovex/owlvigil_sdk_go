@@ -79,8 +79,15 @@ url, err := auth.AuthorizationURL(oauth2.AuthCodeOptions{
 
 - [Quickstart](docs/quickstart.md)
 - [Authentication](docs/authentication.md)
+- [Environments](docs/environments.md)
 - [Gateway](docs/gateway.md)
 - [Management](docs/management.md)
+- [Access control](docs/access-control.md)
+- [Model routing and providers](docs/model-routing.md)
+- [Financial governance](docs/financial-governance.md)
+- [Account settings](docs/account.md)
+- [Billing and subscriptions](docs/billing.md)
+- [Teams and members](docs/teams.md)
 - [OAuth2.0](docs/oauth2.md)
 - [Streaming](docs/streaming.md)
 - [Webhooks](docs/webhooks.md)
@@ -88,15 +95,19 @@ url, err := auth.AuthorizationURL(oauth2.AuthCodeOptions{
 - [Pagination](docs/pagination.md)
 - [Examples](docs/examples.md)
 - [Troubleshooting](docs/troubleshooting.md)
+- [Draft v0.1.0 release notes](docs/release-v0.1.0.md)
 
 ## Verify
 
 ```bash
+sh scripts/check-docs.sh
 go test ./...
 ```
 
-This is the default offline suite: SDK HTTP contracts and example behavior run
-against local `httptest` servers. To run the opt-in, read-only live smoke with
+The documentation check validates public-guide navigation, local Markdown links,
+and Management API-domain coverage. The Go suite validates SDK HTTP contracts
+and example behavior against local `httptest` servers. To run the opt-in,
+read-only live smoke with
 credentials from `.env`, use:
 
 ```bash

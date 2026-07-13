@@ -81,6 +81,23 @@ user, err := client.UserInfo(ctx, token.AccessToken)
 
 ## Revoke
 
+`Revoke` invalidates an access or refresh token through the OAuth endpoint.
+Revoke tokens when a user disconnects the integration, then delete the local
+token record. Treat revocation as best-effort during logout: clear the local
+session even if the network call fails, and retain only a redacted diagnostic.
+
+## Safe callback handling
+
+Generate a cryptographically random `State` value for every authorization
+attempt, store it in the user's server-side session, and compare it before
+calling `Exchange`. Do not put a client secret in a browser, mobile bundle, or
+redirect URL. Use the exact registered redirect URI, and store refresh tokens
+in an encrypted server-side store.
+
+Use `Refresh` before an access token expires and `ClientCredentials` only for a
+confidential server-to-server client. OAuth failures are `*owlvigil.OAuthError`;
+see [Errors](errors.md) for handling and redaction guidance.
+
 ```go
 err := client.Revoke(ctx, token.RefreshToken)
 ```

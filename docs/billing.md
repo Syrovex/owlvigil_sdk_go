@@ -1,5 +1,9 @@
 # Billing & Subscription Guide
 
+> This guide covers payment workflows. For budgets, spend limits, thresholds,
+> quota, and request-level spend evidence, see
+> [Financial governance](financial-governance.md).
+
 Complete guide to managing billing, subscriptions, and payments with the OwlVigil Go SDK.
 
 ---

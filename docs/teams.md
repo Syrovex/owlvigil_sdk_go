@@ -1,5 +1,9 @@
 # Teams & Members Management Guide
 
+> This guide provides extended workflows. For the complete source-domain map,
+> role management, permission overrides, and workspace activity, see
+> [Access control](access-control.md).
+
 Complete guide to managing workspace teams and members with the OwlVigil Go SDK.
 
 ---
@@ -576,7 +580,7 @@ func main() {
 
 ## See Also
 
-- [RBAC Guide](./rbac.md) - Roles and permissions management
+- [Access control](access-control.md) - Roles and permissions management
 - [Authentication Guide](./authentication.md)
 - [Error Handling](./errors.md)
 - [Examples](../examples/team-management/)

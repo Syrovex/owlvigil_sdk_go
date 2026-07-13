@@ -127,4 +127,15 @@ func NewClientForEnv(env string) *management.Client {
 
 ## Examples
 
+Environment selection transforms the built-in OwlVigil URLs only. If you use a
+private proxy or a `httptest` server, pass `WithBaseURL` explicitly. When both
+are needed, apply `WithEnvironment` before `WithBaseURL`, because the latter is
+the final override.
+
+The SDK reads `OWLVIGIL_ENV` only when `WithEnvironmentFromEnv()` is supplied.
+It does not implicitly read credentials from `.env`; runnable examples load the
+file for convenience and preserve already-exported shell values. Keep
+production, staging, and local credentials separate so a local test cannot
+write to a production workspace.
+
 See [examples/multi-environment](../examples/multi-environment/) for complete examples.

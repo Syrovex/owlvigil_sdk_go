@@ -54,3 +54,16 @@ message, _, err := client.CreateAnthropicMessage(ctx, &gateway.AnthropicMessageR
     },
 })
 ```
+
+## Request metadata and streams
+
+Every successful call returns `*owlvigil.ResponseMeta`; record its `RequestID`
+when diagnosing unexpected model behavior. Chat and Responses APIs also expose
+streaming variants. See [Streaming](streaming.md) for event ownership and
+cleanup rules.
+
+Gateway requests must use `OWLVIGIL_GATEWAY_KEY`. They do not accept the
+Management service-account key. Before presenting models to an end user, use
+`ListModels` and `GetModel` to refresh metadata. For workspace routing,
+providers, and Gateway-key lifecycle, use the Management client described in
+[Model routing](model-routing.md).

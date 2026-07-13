@@ -1,5 +1,25 @@
 # Quickstart
 
+## Choose a client
+
+Create a Gateway client for model inference and a Management client for
+workspace configuration. They use different credentials even though their
+production host is the same:
+
+```go
+gatewayClient := gateway.NewClient(
+    owlvigil.WithAPIKey(os.Getenv("OWLVIGIL_GATEWAY_KEY")),
+)
+managementClient := management.NewClient(
+    owlvigil.WithAPIKey(os.Getenv("OWLVIGIL_API_KEY")),
+)
+```
+
+Use a context with a deadline for application requests, check every returned
+error, and record the response metadata request ID for writes. Continue with
+[Gateway](gateway.md) for model calls or [Management](management.md) for
+workspace operations.
+
 Install:
 
 ```bash

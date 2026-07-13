@@ -16,6 +16,7 @@ Use Go 1.25.5 or later, as declared in `go.mod`.
 
 ```bash
 go test ./...                         # run all unit and contract tests
+sh scripts/check-docs.sh               # verify documentation structure and API-domain coverage
 go test ./management -run TestName    # run one management test
 go run ./examples/gateway-models/main.go
 ```
