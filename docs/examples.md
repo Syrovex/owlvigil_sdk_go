@@ -30,5 +30,7 @@ Examples load the nearest `.env` file without overwriting an exported shell
 variable. `OWLVIGIL_GATEWAY_KEY` is for Gateway examples;
 `OWLVIGIL_API_KEY` is for Management examples. OAuth examples require the
 variables documented in `.env.example`. The `openapi-smoke` example performs
-writes and cleanup; run it only in an isolated workspace, never against a
-shared production workspace.
+writes and cleanup when `OWLVIGIL_SMOKE_WRITES=1`; run it only in an isolated
+workspace, never against a shared production workspace. Without that flag it
+checks read-only paths plus the existing Gateway-key and Webhook lifecycle
+coverage.

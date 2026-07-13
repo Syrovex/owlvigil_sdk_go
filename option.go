@@ -145,7 +145,7 @@ func convertToStagingURL(prodURL string) string {
 	// Replace host if it matches known production hosts
 	switch u.Host {
 	case "api.owlvigil.com":
-		u.Host = "apistaging.owlvigil.com"
+		u.Host = "staging.owlvigil.com"
 	case "open.owlvigil.com":
 		u.Host = "openstaging.owlvigil.com"
 	}
@@ -179,7 +179,7 @@ func convertToLocalURL(prodURL string) string {
 
 	// Determine service based on host
 	switch u.Host {
-	case "api.owlvigil.com", "apistaging.owlvigil.com":
+	case "api.owlvigil.com", "staging.owlvigil.com", "apistaging.owlvigil.com":
 		// Gateway API
 		return "http://localhost:8080"
 	case "open.owlvigil.com", "openstaging.owlvigil.com":

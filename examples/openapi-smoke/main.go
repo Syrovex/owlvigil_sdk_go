@@ -35,6 +35,7 @@ type runner struct {
 	clientSecret string
 	workspaceID  int64
 	userID       int64
+	writes       bool
 	steps        []step
 }
 
@@ -57,10 +58,7 @@ func main() {
 	scope := envDefault("OWLVIGIL_SCOPE", defaultScope)
 
 	oauthClient := oauth2.NewClient(owlvigil.WithEnvironmentFromEnv())
-	if accessToken == "" {
-		if clientID == "" || clientSecret == "" {
-			log.Fatal("set OWLVIGIL_ACCESS_TOKEN, or set OWLVIGIL_CLIENT_ID and OWLVIGIL_CLIENT_SECRET")
-		}
+	if oauthEnabled(accessToken, clientID, clientSecret) && accessToken == "" {
 		token, err := oauthClient.ClientCredentials(ctx, oauth2.ClientCredentialsRequest{
 			ClientID:     clientID,
 			ClientSecret: clientSecret,
@@ -86,6 +84,7 @@ func main() {
 		refreshToken: refreshToken,
 		clientID:     clientID,
 		clientSecret: clientSecret,
+		writes:       writeSmokeEnabled(os.Getenv("OWLVIGIL_SMOKE_WRITES")),
 	}
 	r.runAll()
 	r.print()
@@ -106,6 +105,14 @@ func (r *runner) runAll() {
 }
 
 func (r *runner) runOAuth() {
+	if !oauthEnabled(r.accessToken, r.clientID, r.clientSecret) {
+		r.skip("oauth token", "POST /oauth/token", "OAuth credentials are not configured")
+		r.skip("oauth userinfo", "GET /oauth/userinfo", "OAuth credentials are not configured")
+		r.skip("oauth refresh", "POST /oauth/token/refresh", "OAuth credentials are not configured")
+		r.skip("oauth revoke", "POST /oauth/revoke", "OAuth credentials are not configured")
+		r.skip("oauth authorize", "GET /oauth/authorize", "browser/dashboard-login flow is covered by examples/oauth2-callback-server")
+		return
+	}
 	r.pass("oauth token", "POST /oauth/token")
 	r.call("oauth userinfo", "GET /oauth/userinfo", func() error {
 		info, err := r.oauth.UserInfo(r.ctx, r.accessToken)
@@ -142,14 +149,37 @@ func (r *runner) runUserAndWorkspace() {
 		}
 		return nil
 	})
-	r.skip("update user profile", "PUT /open/v1/user/profile", "user write endpoint not exercised in smoke")
+	r.write("update user profile", "PUT /open/v1/user/profile", "user write endpoint not exercised in smoke", func() error {
+		profile, _, err := r.management.GetUserProfile(r.ctx)
+		if err != nil {
+			return err
+		}
+		_, _, err = r.management.UpdateUserProfile(r.ctx, &management.UpdateUserProfileRequest{
+			Name:               &profile.Name,
+			AvatarURL:          &profile.AvatarURL,
+			DefaultWorkspaceID: &profile.DefaultWorkspaceID,
+		})
+		return err
+	})
 	r.skip("change user password", "PUT /open/v1/user/password", "user write endpoint not exercised in smoke")
 	r.skip("submit support request", "POST /open/v1/user/support-requests", "user write endpoint not exercised in smoke")
 	r.call("get notification preferences", "GET /open/v1/user/notification-preferences", func() error {
 		_, _, err := r.management.GetNotificationPreferences(r.ctx)
 		return err
 	})
-	r.skip("update notification preferences", "PUT /open/v1/user/notification-preferences", "user write endpoint not exercised in smoke")
+	r.write("update notification preferences", "PUT /open/v1/user/notification-preferences", "user write endpoint not exercised in smoke", func() error {
+		preferences, _, err := r.management.GetNotificationPreferences(r.ctx)
+		if err != nil {
+			return err
+		}
+		_, _, err = r.management.UpdateNotificationPreferences(r.ctx, &management.UpdateNotificationPreferencesRequest{
+			BudgetAlerts:    &preferences.BudgetAlerts,
+			BillingAlerts:   &preferences.BillingAlerts,
+			ReportEmails:    &preferences.ReportEmails,
+			MarketingEmails: &preferences.MarketingEmails,
+		})
+		return err
+	})
 	r.call("get invite link", "GET /open/v1/users/me/invite-link", func() error {
 		_, _, err := r.management.GetInviteLink(r.ctx)
 		return err
@@ -190,7 +220,17 @@ func (r *runner) runUserAndWorkspace() {
 		_, _, err := r.management.GetWorkspace(r.ctx, r.workspaceID)
 		return err
 	})
-	r.skip("update workspace", "PATCH /open/v1/workspaces/:workspace_id", "workspace write endpoint not exercised in smoke")
+	r.write("update workspace", "PATCH /open/v1/workspaces/:workspace_id", "workspace write endpoint not exercised in smoke", func() error {
+		workspace, _, err := r.management.GetWorkspace(r.ctx, r.workspaceID)
+		if err != nil {
+			return err
+		}
+		_, _, err = r.management.UpdateWorkspace(r.ctx, r.workspaceID, &management.UpdateWorkspaceRequest{
+			Name:        &workspace.Name,
+			Description: &workspace.Description,
+		})
+		return err
+	})
 }
 
 func (r *runner) runWorkspaceAccess() {
@@ -219,9 +259,28 @@ func (r *runner) runWorkspaceAccess() {
 		}
 		return nil
 	})
-	r.skip("create workspace team", "POST /open/v1/workspaces/:workspace_id/teams", "workspace write endpoint not exercised in smoke")
-	r.skip("update workspace team", "PATCH /open/v1/workspaces/:workspace_id/teams/:team_id", "workspace write endpoint not exercised in smoke")
-	r.skip("delete workspace team", "DELETE /open/v1/workspaces/:workspace_id/teams/:team_id", "workspace write endpoint not exercised in smoke")
+	var createdTeamID int64
+	r.write("create workspace team", "POST /open/v1/workspaces/:workspace_id/teams", "workspace write endpoint not exercised in smoke", func() error {
+		team, _, err := r.management.CreateTeam(r.ctx, r.workspaceID, &management.CreateTeamRequest{Name: smokeName("SDK Smoke Team")})
+		if err == nil {
+			createdTeamID = team.ID
+		}
+		return err
+	})
+	if createdTeamID > 0 {
+		updatedName := smokeName("SDK Smoke Team Updated")
+		r.call("update workspace team", "PATCH /open/v1/workspaces/:workspace_id/teams/:team_id", func() error {
+			_, _, err := r.management.UpdateTeam(r.ctx, r.workspaceID, createdTeamID, &management.UpdateTeamRequest{Name: &updatedName})
+			return err
+		})
+		r.call("delete workspace team", "DELETE /open/v1/workspaces/:workspace_id/teams/:team_id", func() error {
+			_, err := r.management.DeleteTeam(r.ctx, r.workspaceID, createdTeamID)
+			return err
+		})
+	} else {
+		r.skip("update workspace team", "PATCH /open/v1/workspaces/:workspace_id/teams/:team_id", "temporary team was not created")
+		r.skip("delete workspace team", "DELETE /open/v1/workspaces/:workspace_id/teams/:team_id", "temporary team was not created")
+	}
 
 	r.call("list workspace members", "GET /open/v1/workspaces/:workspace_id/members", func() error {
 		members, _, err := r.management.ListMembers(r.ctx, r.workspaceID, management.ListOptions{Limit: 5})
@@ -245,7 +304,34 @@ func (r *runner) runWorkspaceAccess() {
 		return err
 	})
 	r.skip("add workspace member", "POST /open/v1/workspaces/:workspace_id/members", "workspace write endpoint not exercised in smoke")
-	r.skip("update workspace member", "PATCH /open/v1/workspaces/:workspace_id/members/:member_id", "workspace write endpoint not exercised in smoke")
+	if !r.writes {
+		r.skip("update workspace member", "PATCH /open/v1/workspaces/:workspace_id/members/:member_id", "workspace write endpoint not exercised in smoke")
+	} else {
+		members, _, err := r.management.ListMembers(r.ctx, r.workspaceID, management.ListOptions{Limit: 100})
+		if err != nil {
+			r.recordErr("update workspace member", "PATCH /open/v1/workspaces/:workspace_id/members/:member_id", err)
+		} else {
+			var candidate *management.Member
+			for i := range members.Items {
+				if members.Items[i].UserID != r.userID {
+					candidate = &members.Items[i]
+					break
+				}
+			}
+			if candidate == nil {
+				r.skip("update workspace member", "PATCH /open/v1/workspaces/:workspace_id/members/:member_id", "no non-owner member is available for a safe update")
+			} else {
+				r.call("update workspace member", "PATCH /open/v1/workspaces/:workspace_id/members/:member_id", func() error {
+					_, _, err := r.management.UpdateMember(r.ctx, r.workspaceID, candidate.UserID, &management.UpdateMemberRequest{
+						RoleIDs: candidate.RoleIDs,
+						TeamIDs: candidate.TeamIDs,
+						Status:  &candidate.Status,
+					})
+					return err
+				})
+			}
+		}
+	}
 	r.skip("remove workspace member", "DELETE /open/v1/workspaces/:workspace_id/members/:member_id", "workspace write endpoint not exercised in smoke")
 
 	r.call("list workspace invitations", "GET /open/v1/workspaces/:workspace_id/invitations", func() error {
@@ -269,9 +355,28 @@ func (r *runner) runWorkspaceAccess() {
 		}
 		return nil
 	})
-	r.skip("create workspace role", "POST /open/v1/workspaces/:workspace_id/roles", "workspace write endpoint not exercised in smoke")
-	r.skip("update workspace role", "PATCH /open/v1/workspaces/:workspace_id/roles/:role_id", "workspace write endpoint not exercised in smoke")
-	r.skip("delete workspace role", "DELETE /open/v1/workspaces/:workspace_id/roles/:role_id", "workspace write endpoint not exercised in smoke")
+	var createdRoleID int64
+	r.write("create workspace role", "POST /open/v1/workspaces/:workspace_id/roles", "workspace write endpoint not exercised in smoke", func() error {
+		role, _, err := r.management.CreateRole(r.ctx, r.workspaceID, &management.CreateRoleRequest{Name: smokeName("SDK Smoke Role")})
+		if err == nil {
+			createdRoleID = role.ID
+		}
+		return err
+	})
+	if createdRoleID > 0 {
+		updatedName := smokeName("SDK Smoke Role Updated")
+		r.call("update workspace role", "PATCH /open/v1/workspaces/:workspace_id/roles/:role_id", func() error {
+			_, _, err := r.management.UpdateRole(r.ctx, r.workspaceID, createdRoleID, &management.UpdateRoleRequest{Name: &updatedName})
+			return err
+		})
+		r.call("delete workspace role", "DELETE /open/v1/workspaces/:workspace_id/roles/:role_id", func() error {
+			_, err := r.management.DeleteRole(r.ctx, r.workspaceID, createdRoleID)
+			return err
+		})
+	} else {
+		r.skip("update workspace role", "PATCH /open/v1/workspaces/:workspace_id/roles/:role_id", "temporary role was not created")
+		r.skip("delete workspace role", "DELETE /open/v1/workspaces/:workspace_id/roles/:role_id", "temporary role was not created")
+	}
 	r.callSkipKnown("list workspace permissions", "GET /open/v1/workspaces/:workspace_id/permissions", []string{"feature.rbac is not included"}, func() error {
 		_, _, err := r.management.ListPermissions(r.ctx, r.workspaceID)
 		return err
@@ -536,12 +641,73 @@ func (r *runner) runFinancial() {
 		_, _, err := r.management.GetSpendSummary(r.ctx, r.workspaceID)
 		return err
 	})
-	r.skip("update financial governance", "PUT /open/v1/workspaces/:workspace_id/governance/financial", "financial write endpoint not exercised in smoke")
-	r.skip("update budget caps", "PUT /open/v1/workspaces/:workspace_id/governance/financial/budget-caps", "financial write endpoint not exercised in smoke")
-	r.skip("update scope budget cap", "PATCH /open/v1/workspaces/:workspace_id/governance/financial/budget-caps/:scope_type/:scope_id", "financial write endpoint not exercised in smoke")
-	r.skip("update spending limits", "PUT /open/v1/workspaces/:workspace_id/governance/financial/spending-limits", "financial write endpoint not exercised in smoke")
-	r.skip("update user spending limit", "PATCH /open/v1/workspaces/:workspace_id/governance/financial/spending-limits/users/:user_id", "financial write endpoint not exercised in smoke")
-	r.skip("update financial thresholds", "PUT /open/v1/workspaces/:workspace_id/governance/financial/thresholds", "financial write endpoint not exercised in smoke")
+	r.write("update financial governance", "PUT /open/v1/workspaces/:workspace_id/governance/financial", "financial write endpoint not exercised in smoke", func() error {
+		governance, _, err := r.management.GetFinancialGovernance(r.ctx, r.workspaceID)
+		if err != nil {
+			return err
+		}
+		_, _, err = r.management.UpdateFinancialGovernance(r.ctx, r.workspaceID, &management.UpdateFinancialGovernanceRequest{
+			BudgetCaps:     governance.BudgetCaps,
+			SpendingLimits: governance.SpendingLimits,
+			Thresholds:     governance.Thresholds,
+		})
+		return err
+	})
+	r.write("update budget caps", "PUT /open/v1/workspaces/:workspace_id/governance/financial/budget-caps", "financial write endpoint not exercised in smoke", func() error {
+		caps, _, err := r.management.GetBudgetCaps(r.ctx, r.workspaceID)
+		if err != nil {
+			return err
+		}
+		_, _, err = r.management.UpdateBudgetCaps(r.ctx, r.workspaceID, &management.UpdateBudgetCapsRequest{
+			Workspace: caps.Workspace, Teams: caps.Teams, Members: caps.Members, GatewayKeys: caps.GatewayKeys,
+		})
+		return err
+	})
+	if !r.writes {
+		r.skip("update scope budget cap", "PATCH /open/v1/workspaces/:workspace_id/governance/financial/budget-caps/:scope_type/:scope_id", "financial write endpoint not exercised in smoke")
+	} else if caps, _, err := r.management.GetBudgetCaps(r.ctx, r.workspaceID); err != nil {
+		r.recordErr("update scope budget cap", "PATCH /open/v1/workspaces/:workspace_id/governance/financial/budget-caps/:scope_type/:scope_id", err)
+	} else if caps.Workspace == nil || caps.Workspace.ScopeType == "" || caps.Workspace.ScopeID == "" {
+		r.skip("update scope budget cap", "PATCH /open/v1/workspaces/:workspace_id/governance/financial/budget-caps/:scope_type/:scope_id", "workspace budget cap is not configured")
+	} else {
+		r.call("update scope budget cap", "PATCH /open/v1/workspaces/:workspace_id/governance/financial/budget-caps/:scope_type/:scope_id", func() error {
+			_, _, err := r.management.UpdateScopeBudgetCap(r.ctx, r.workspaceID, caps.Workspace.ScopeType, caps.Workspace.ScopeID, &management.UpdateScopeBudgetCapRequest{Limit: caps.Workspace.Limit})
+			return err
+		})
+	}
+	r.write("update spending limits", "PUT /open/v1/workspaces/:workspace_id/governance/financial/spending-limits", "financial write endpoint not exercised in smoke", func() error {
+		limits, _, err := r.management.GetSpendingLimits(r.ctx, r.workspaceID, management.ListOptions{Limit: 100})
+		if err != nil {
+			return err
+		}
+		_, _, err = r.management.UpdateSpendingLimits(r.ctx, r.workspaceID, &management.UpdateSpendingLimitsRequest{Limits: limits.Items})
+		return err
+	})
+	if !r.writes {
+		r.skip("update user spending limit", "PATCH /open/v1/workspaces/:workspace_id/governance/financial/spending-limits/users/:user_id", "financial write endpoint not exercised in smoke")
+	} else if limits, _, err := r.management.GetSpendingLimits(r.ctx, r.workspaceID, management.ListOptions{Limit: 1}); err != nil {
+		r.recordErr("update user spending limit", "PATCH /open/v1/workspaces/:workspace_id/governance/financial/spending-limits/users/:user_id", err)
+	} else if len(limits.Items) == 0 {
+		r.skip("update user spending limit", "PATCH /open/v1/workspaces/:workspace_id/governance/financial/spending-limits/users/:user_id", "no user spending limit is configured")
+	} else {
+		limit := limits.Items[0]
+		r.call("update user spending limit", "PATCH /open/v1/workspaces/:workspace_id/governance/financial/spending-limits/users/:user_id", func() error {
+			_, _, err := r.management.UpdateUserSpendingLimit(r.ctx, r.workspaceID, limit.UserID, &management.UpdateUserSpendingLimitRequest{
+				DailyLimit: &limit.DailyLimit, WeeklyLimit: &limit.WeeklyLimit, MonthlyLimit: &limit.MonthlyLimit,
+			})
+			return err
+		})
+	}
+	r.write("update financial thresholds", "PUT /open/v1/workspaces/:workspace_id/governance/financial/thresholds", "financial write endpoint not exercised in smoke", func() error {
+		thresholds, _, err := r.management.GetFinancialThresholds(r.ctx, r.workspaceID)
+		if err != nil {
+			return err
+		}
+		_, _, err = r.management.UpdateFinancialThresholds(r.ctx, r.workspaceID, &management.UpdateThresholdsRequest{
+			WarningPercent: &thresholds.WarningPercent, CriticalPercent: &thresholds.CriticalPercent, ExceededAction: &thresholds.ExceededAction,
+		})
+		return err
+	})
 }
 
 func (r *runner) runPolicies() {
@@ -686,6 +852,14 @@ func (r *runner) callSkipKnown(name, contract string, known []string, fn func() 
 	r.recordErr(name, contract, err)
 }
 
+func (r *runner) write(name, contract, reason string, fn func() error) {
+	if !r.writes {
+		r.skip(name, contract, reason)
+		return
+	}
+	r.call(name, contract, fn)
+}
+
 func (r *runner) recordErr(name, contract string, err error) {
 	if err != nil {
 		r.steps = append(r.steps, step{Name: name, Contract: contract, Status: "FAIL", Error: err.Error()})
@@ -736,6 +910,14 @@ func envDefault(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func oauthEnabled(accessToken, clientID, clientSecret string) bool {
+	return strings.TrimSpace(accessToken) != "" || (strings.TrimSpace(clientID) != "" && strings.TrimSpace(clientSecret) != "")
+}
+
+func writeSmokeEnabled(value string) bool {
+	return strings.TrimSpace(value) == "1"
 }
 
 func maskToken(token string) string {

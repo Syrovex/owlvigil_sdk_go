@@ -23,7 +23,14 @@ func TestLiveOpenAPIReadOnly(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	t.Cleanup(cancel)
-	client := management.NewClient(owlvigil.WithAPIKey(apiKey), owlvigil.WithoutRetry())
+	client := management.NewClient(
+		owlvigil.WithEnvironmentFromEnv(),
+		owlvigil.WithAPIKey(apiKey),
+		owlvigil.WithoutRetry(),
+	)
+	if os.Getenv("OWLVIGIL_ENV") == "staging" && client.BaseURL() != "https://staging.owlvigil.com/open/v1" {
+		t.Fatalf("Management staging BaseURL = %q, want %q", client.BaseURL(), "https://staging.owlvigil.com/open/v1")
+	}
 
 	workspaces, _, err := client.ListWorkspaces(ctx, management.ListOptions{Limit: 1})
 	if err != nil {

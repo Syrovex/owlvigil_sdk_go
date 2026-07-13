@@ -25,7 +25,7 @@ func TestWithEnvironment(t *testing.T) {
 			name:        "gateway staging",
 			baseURL:     owlvigil.DefaultGatewayBaseURL,
 			environment: owlvigil.EnvironmentStaging,
-			want:        "https://apistaging.owlvigil.com",
+			want:        "https://staging.owlvigil.com",
 		},
 		{
 			name:        "gateway local",
@@ -43,7 +43,7 @@ func TestWithEnvironment(t *testing.T) {
 			name:        "management staging",
 			baseURL:     owlvigil.DefaultManagementBaseURL,
 			environment: owlvigil.EnvironmentStaging,
-			want:        "https://apistaging.owlvigil.com/open/v1",
+			want:        "https://staging.owlvigil.com/open/v1",
 		},
 		{
 			name:        "management local",
@@ -103,7 +103,7 @@ func TestWithEnvironmentFromEnv(t *testing.T) {
 			name:    "staging env",
 			baseURL: owlvigil.DefaultGatewayBaseURL,
 			envVar:  "staging",
-			want:    "https://apistaging.owlvigil.com",
+			want:    "https://staging.owlvigil.com",
 		},
 		{
 			name:    "local env",
@@ -145,8 +145,8 @@ func TestEnvironmentWithBaseURL(t *testing.T) {
 
 	// Apply environment first
 	owlvigil.WithEnvironment(owlvigil.EnvironmentStaging)(&config)
-	if config.BaseURL != "https://apistaging.owlvigil.com" {
-		t.Errorf("After WithEnvironment, BaseURL = %v, want %v", config.BaseURL, "https://apistaging.owlvigil.com")
+	if config.BaseURL != "https://staging.owlvigil.com" {
+		t.Errorf("After WithEnvironment, BaseURL = %v, want %v", config.BaseURL, "https://staging.owlvigil.com")
 	}
 
 	// Apply custom BaseURL (should override)

@@ -21,8 +21,8 @@ client := management.NewClient(
     owlvigil.WithAPIKey(stagingAPIKey),
 )
 ```
-- Gateway: `https://apistaging.owlvigil.com`
-- Management: `https://openstaging.owlvigil.com/open/v1`
+- Gateway: `https://staging.owlvigil.com`
+- Management: `https://staging.owlvigil.com/open/v1`
 - OAuth: `https://openstaging.owlvigil.com`
 
 ### Local Development

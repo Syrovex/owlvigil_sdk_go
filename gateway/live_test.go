@@ -22,7 +22,14 @@ func TestLiveGatewayReadOnly(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	t.Cleanup(cancel)
-	client := gateway.NewClient(owlvigil.WithAPIKey(apiKey), owlvigil.WithoutRetry())
+	client := gateway.NewClient(
+		owlvigil.WithEnvironmentFromEnv(),
+		owlvigil.WithAPIKey(apiKey),
+		owlvigil.WithoutRetry(),
+	)
+	if os.Getenv("OWLVIGIL_ENV") == "staging" && client.BaseURL() != "https://staging.owlvigil.com" {
+		t.Fatalf("Gateway staging BaseURL = %q, want %q", client.BaseURL(), "https://staging.owlvigil.com")
+	}
 	models, _, err := client.ListModels(ctx)
 	if err != nil {
 		t.Fatalf("ListModels() error = %v", err)
