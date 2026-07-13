@@ -1,0 +1,27 @@
+# Authentication
+
+OwlVigil has two public calling surfaces:
+
+| Surface | Default URL | Auth |
+| --- | --- | --- |
+| Gateway model calls | `https://api.owlvigil.com` | `Authorization: Bearer ov_sk_xxx` |
+| Management Open API | `https://api.owlvigil.com/open/v1` | `Authorization: Bearer <OWLVIGIL_API_KEY>` |
+
+Gateway keys are for model invocation. Management operations such as listing workspaces, creating Gateway keys, reading usage, and managing webhooks require a scoped service-account API key. OAuth2.0 remains available only for the separate OAuth endpoints.
+
+Static tokens:
+
+```go
+gatewayClient := gateway.NewClient(owlvigil.WithAPIKey(os.Getenv("OWLVIGIL_GATEWAY_KEY")))
+managementClient := management.NewClient(owlvigil.WithAPIKey(os.Getenv("OWLVIGIL_API_KEY")))
+```
+
+Dynamic token providers:
+
+```go
+managementClient := management.NewClient(owlvigil.WithAPIKeyProvider(func(ctx context.Context) (string, error) {
+    return tokenStore.CurrentAPIKey(ctx)
+}))
+```
+
+The SDK sets `User-Agent: owlvigil-go/<version>` by default.

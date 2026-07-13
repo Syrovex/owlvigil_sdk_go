@@ -1,0 +1,8 @@
+.DS_Store
+.env
+bin/
+dist/
+coverage.out
+*.test
+vendor/
+examples/multi-environment/multi-environment
