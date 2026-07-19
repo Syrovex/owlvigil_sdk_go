@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/owlvigil/owlvigil-go/webhook"
+	"github.com/Syrovex/owlvigil_sdk_go/webhook"
 )
 
 func TestVerifySignature(t *testing.T) {

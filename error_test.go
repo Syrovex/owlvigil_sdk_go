@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
 )
 
 func TestAPIErrorError(t *testing.T) {

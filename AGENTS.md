@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This repository is the `github.com/owlvigil/owlvigil-go` Go SDK. Public API
+This repository is the `github.com/Syrovex/owlvigil_sdk_go` Go SDK. Public API
 packages are organized by surface: `gateway/` for model calls,
 `management/` for `/v1` operations, `oauth2/` for OAuth flows, and
 `webhook/` for signature verification. Shared HTTP, retry, redaction, and SSE

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
-	"github.com/owlvigil/owlvigil-go/internal/owlvigilhttp"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
+	"github.com/Syrovex/owlvigil_sdk_go/internal/owlvigilhttp"
 )
 
 // TokenResponse is returned by OAuth2.0 token endpoints.

@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strconv"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
 )
 
 // Provider describes an upstream model provider configured for a workspace.

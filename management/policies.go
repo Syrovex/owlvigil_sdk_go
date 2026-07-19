@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strconv"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
 )
 
 // GatewayPolicy describes policies applied to a gateway key.

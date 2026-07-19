@@ -1,8 +1,8 @@
 package gateway
 
 import (
-	owlvigil "github.com/owlvigil/owlvigil-go"
-	"github.com/owlvigil/owlvigil-go/internal/owlvigilhttp"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
+	"github.com/Syrovex/owlvigil_sdk_go/internal/owlvigilhttp"
 )
 
 // Client calls OwlVigil Gateway endpoints on gateway.owlvigil.com by default.

@@ -7,7 +7,7 @@ Gateway model calls use `https://gateway.owlvigil.com` with a Gateway key. OpenA
 ## Install
 
 ```bash
-go get github.com/owlvigil/owlvigil-go
+go get github.com/Syrovex/owlvigil_sdk_go
 ```
 
 ## Run examples

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
 )
 
 // Client is the shared HTTP client used by public SDK packages.

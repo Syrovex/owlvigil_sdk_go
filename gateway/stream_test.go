@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
-	"github.com/owlvigil/owlvigil-go/gateway"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
+	"github.com/Syrovex/owlvigil_sdk_go/gateway"
 )
 
 func TestCreateChatCompletionStream(t *testing.T) {

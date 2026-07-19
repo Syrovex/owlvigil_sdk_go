@@ -6,9 +6,9 @@ import (
 	"log"
 	"os"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
-	"github.com/owlvigil/owlvigil-go/examples/internal/envfile"
-	"github.com/owlvigil/owlvigil-go/management"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
+	"github.com/Syrovex/owlvigil_sdk_go/examples/internal/envfile"
+	"github.com/Syrovex/owlvigil_sdk_go/management"
 )
 
 func main() {

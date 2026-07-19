@@ -3,7 +3,7 @@ package owlvigil_test
 import (
 	"testing"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
 )
 
 func TestWithEnvironment(t *testing.T) {

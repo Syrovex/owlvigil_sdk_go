@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
-	"github.com/owlvigil/owlvigil-go/management"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
+	"github.com/Syrovex/owlvigil_sdk_go/management"
 )
 
 func TestOpenAPIContractCoverageForProvidersAndRoutes(t *testing.T) {

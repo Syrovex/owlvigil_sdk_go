@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
-	"github.com/owlvigil/owlvigil-go/examples/internal/envfile"
-	"github.com/owlvigil/owlvigil-go/management"
-	oauth2 "github.com/owlvigil/owlvigil-go/oauth2"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
+	"github.com/Syrovex/owlvigil_sdk_go/examples/internal/envfile"
+	"github.com/Syrovex/owlvigil_sdk_go/management"
+	oauth2 "github.com/Syrovex/owlvigil_sdk_go/oauth2"
 )
 
 const (

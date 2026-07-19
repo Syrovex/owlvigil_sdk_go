@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
 )
 
 // UsageSummary contains aggregated Gateway usage.

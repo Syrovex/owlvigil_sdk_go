@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/owlvigil/owlvigil-go/management"
+	"github.com/Syrovex/owlvigil_sdk_go/management"
 )
 
 func TestClient_ExposesOnlyPublishedOpenAPIManagementMethods(t *testing.T) {

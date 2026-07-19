@@ -3,7 +3,7 @@ package oauth2
 import (
 	"net/http"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
 )
 
 // Client builds OAuth2.0 authorization URLs and calls OwlVigil OAuth endpoints.

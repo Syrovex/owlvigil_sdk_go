@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strconv"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
 )
 
 // WebhookEndpoint describes a configured webhook endpoint.

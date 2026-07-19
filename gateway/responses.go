@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
 )
 
 // ResponseRequest is the request body for the OpenAI-compatible Responses API.

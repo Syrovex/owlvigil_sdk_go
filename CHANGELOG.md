@@ -149,7 +149,7 @@
 
 ### Added
 
-- Bootstrap the standalone `github.com/owlvigil/owlvigil-go` SDK module.
+- Bootstrap the standalone `github.com/Syrovex/owlvigil_sdk_go` SDK module.
 - Add Gateway client for `https://api.owlvigil.com` model calls with Gateway key authentication.
 - Add Management client for `https://open.owlvigil.com/open/v1` workflows with OAuth2.0 access-token authentication.
 - Add OAuth2.0 helpers, streaming support, pagination helpers, webhook signature verification, examples, docs, and tests.

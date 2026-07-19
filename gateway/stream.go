@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/owlvigil/owlvigil-go/internal/owlvigilhttp"
-	"github.com/owlvigil/owlvigil-go/internal/sse"
+	"github.com/Syrovex/owlvigil_sdk_go/internal/owlvigilhttp"
+	"github.com/Syrovex/owlvigil_sdk_go/internal/sse"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
 )
 
 // StreamEvent is one decoded server-sent event from a Gateway stream.

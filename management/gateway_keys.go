@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
 )
 
 // GatewayKey describes a Gateway key managed through the Management API.

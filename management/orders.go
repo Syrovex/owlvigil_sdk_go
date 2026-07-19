@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/url"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
 )
 
 // Order describes a billing order (subscription or top-up).

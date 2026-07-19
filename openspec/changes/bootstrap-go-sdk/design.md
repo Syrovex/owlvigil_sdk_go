@@ -217,7 +217,7 @@ Rollback is simple before first public release: revise the SDK API and OpenSpec 
 
 ## Open Questions
 
-- What final Go module path should be used, for example `github.com/owlvigil/owlvigil-go`?
+- What final Go module path should be used, for example `github.com/Syrovex/owlvigil_sdk_go`?
 - Which Gateway endpoints are required in the first public release beyond chat completions, responses, models, and embeddings?
 - Which Management endpoints should be included before generated OpenAPI support exists?
 - Should OAuth2.0 PKCE helpers be included in the first release or in a follow-up change?

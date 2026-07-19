@@ -22,7 +22,7 @@ workspace operations.
 Install:
 
 ```bash
-go get github.com/owlvigil/owlvigil-go
+go get github.com/Syrovex/owlvigil_sdk_go
 ```
 
 Gateway calls go to `https://gateway.owlvigil.com` and use Gateway keys:

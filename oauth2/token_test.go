@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
-	oauth2 "github.com/owlvigil/owlvigil-go/oauth2"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
+	oauth2 "github.com/Syrovex/owlvigil_sdk_go/oauth2"
 )
 
 func TestTokenFlows(t *testing.T) {

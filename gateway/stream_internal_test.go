@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/owlvigil/owlvigil-go/internal/sse"
+	"github.com/Syrovex/owlvigil_sdk_go/internal/sse"
 )
 
 func TestStreamErrorAndNilClose(t *testing.T) {

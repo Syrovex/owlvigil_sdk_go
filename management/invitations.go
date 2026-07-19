@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	owlvigil "github.com/owlvigil/owlvigil-go"
+	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
 )
 
 // Invitation describes a workspace invitation.
