@@ -1,6 +1,16 @@
 package main
 
-import "testing"
+import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	owlvigil "github.com/owlvigil/owlvigil-go"
+	"github.com/owlvigil/owlvigil-go/management"
+)
 
 func TestOAuthEnabled(t *testing.T) {
 	tests := []struct {
@@ -61,5 +71,60 @@ func TestStripePaymentMethodID(t *testing.T) {
 				t.Errorf("stripePaymentMethodID(%q) = %q, want %q", tt.value, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestRunner_DoesNotCreateSmokeResourcesWhenWritesAreDisabled(t *testing.T) {
+	var mutations atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			mutations.Add(1)
+		}
+		if req.URL.Path == "/webhook-event-types" {
+			_, _ = w.Write([]byte(`[]`))
+			return
+		}
+		if req.URL.Path == "/webhook-events" {
+			_, _ = w.Write([]byte(`{"items":[{"id":"1"}],"page_info":{}}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"items":[],"page_info":{}}`))
+	}))
+	defer server.Close()
+
+	r := &runner{
+		ctx: context.Background(),
+		management: management.NewClient(
+			owlvigil.WithBaseURL(server.URL),
+			owlvigil.WithoutRetry(),
+		),
+		workspaceID: 1,
+		writes:      false,
+	}
+	r.runGateway()
+	r.runWebhooks()
+
+	if got := mutations.Load(); got != 0 {
+		t.Fatalf("mutating smoke requests = %d, want 0 when OWLVIGIL_SMOKE_WRITES is disabled", got)
+	}
+}
+
+func TestRunner_CleanupContextOutlivesRunContext(t *testing.T) {
+	runCtx, cancelRun := context.WithCancel(context.Background())
+	cancelRun()
+	r := &runner{ctx: runCtx}
+
+	cleanupCtx, cancelCleanup := r.cleanupContext()
+	defer cancelCleanup()
+
+	if err := cleanupCtx.Err(); err != nil {
+		t.Fatalf("cleanup context error = %v, want usable context", err)
+	}
+	deadline, ok := cleanupCtx.Deadline()
+	if !ok {
+		t.Fatal("cleanup context has no deadline")
+	}
+	if remaining := time.Until(deadline); remaining <= 0 || remaining > cleanupTimeout {
+		t.Fatalf("cleanup deadline remaining = %s, want (0, %s]", remaining, cleanupTimeout)
 	}
 }

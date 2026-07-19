@@ -39,11 +39,13 @@ key, _, err := client.CreateGatewayKey(ctx, req, owlvigil.WithIdempotencyKey("cr
 
 ## Retry and recovery
 
-Clients retry conservatively by default (two retry attempts with a short wait).
-Use `WithRetry` to tune that behavior or `WithoutRetry` when the surrounding
-application owns retries. Do not blindly retry a mutation after an ambiguous
-timeout: reuse the same idempotency key, then read the resource or inspect the
-request ID to determine whether the service accepted it.
+Read-only requests retry conservatively by default (two retry attempts with a
+short wait). A mutating request is retried only when the caller supplies an
+idempotency key. Use `WithRetry` to tune that behavior or `WithoutRetry` when
+the surrounding application owns retries. Do not blindly retry a mutation
+after an ambiguous timeout: reuse the same idempotency key, then read the
+resource or inspect the request ID to determine whether the service accepted
+it.
 
 `ResponseMeta` is returned on successful SDK calls and includes `RequestID`,
 `Code`, and `Message`. Preserve `RequestID` alongside application logs for both

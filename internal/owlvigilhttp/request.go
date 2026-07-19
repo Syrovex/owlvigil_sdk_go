@@ -53,6 +53,7 @@ func (c *Client) Do(ctx context.Context, method, endpoint string, query url.Valu
 	for _, opt := range opts {
 		opt(&reqCfg)
 	}
+	retryEnabled := retryAllowed(method, reqCfg.IdempotencyKey)
 
 	attempts := c.cfg.RetryMax + 1
 	if attempts < 1 {
@@ -79,7 +80,7 @@ func (c *Client) Do(ctx context.Context, method, endpoint string, query url.Valu
 		resp, err := c.cfg.HTTPClient.Do(req)
 		if err != nil {
 			lastErr = err
-			if !isRetryableError(err) || attempt == attempts-1 {
+			if !retryEnabled || !isRetryableError(err) || attempt == attempts-1 {
 				return nil, err
 			}
 			continue
@@ -89,7 +90,7 @@ func (c *Client) Do(ctx context.Context, method, endpoint string, query url.Valu
 		if err != nil {
 			lastErr = err
 			var apiErr *owlvigil.APIError
-			if errors.As(err, &apiErr) && isRetryableStatus(apiErr.StatusCode) && attempt < attempts-1 {
+			if retryEnabled && errors.As(err, &apiErr) && isRetryableStatus(apiErr.StatusCode) && attempt < attempts-1 {
 				continue
 			}
 			return meta, err
@@ -255,4 +256,13 @@ func isRetryableError(err error) bool {
 
 func isRetryableStatus(status int) bool {
 	return status == http.StatusBadGateway || status == http.StatusServiceUnavailable || status == http.StatusGatewayTimeout
+}
+
+func retryAllowed(method, idempotencyKey string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return true
+	default:
+		return idempotencyKey != ""
+	}
 }

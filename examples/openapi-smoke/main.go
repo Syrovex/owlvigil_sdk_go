@@ -16,7 +16,10 @@ import (
 	oauth2 "github.com/owlvigil/owlvigil-go/oauth2"
 )
 
-const defaultScope = "workspace:read workspace:write gateway:read gateway:write usage:read billing:read billing:write webhook:read webhook:write profile:read profile:write support:write notifications:read notifications:write invites:read invites:write audit_logs:read teams:read teams:write members:read members:write rbac:read rbac:write financial:read financial:write policies:read policies:write"
+const (
+	defaultScope   = "workspace:read workspace:write gateway:read gateway:write usage:read billing:read billing:write webhook:read webhook:write profile:read profile:write support:write notifications:read notifications:write invites:read invites:write audit_logs:read teams:read teams:write members:read members:write rbac:read rbac:write financial:read financial:write policies:read policies:write"
+	cleanupTimeout = 15 * time.Second
+)
 
 type step struct {
 	Name     string
@@ -273,8 +276,8 @@ func (r *runner) runWorkspaceAccess() {
 			_, _, err := r.management.UpdateTeam(r.ctx, r.workspaceID, createdTeamID, &management.UpdateTeamRequest{Name: &updatedName})
 			return err
 		})
-		r.call("delete workspace team", "DELETE /v1/workspaces/:workspace_id/teams/:team_id", func() error {
-			_, err := r.management.DeleteTeam(r.ctx, r.workspaceID, createdTeamID)
+		r.cleanup("delete workspace team", "DELETE /v1/workspaces/:workspace_id/teams/:team_id", func(ctx context.Context) error {
+			_, err := r.management.DeleteTeam(ctx, r.workspaceID, createdTeamID)
 			return err
 		})
 	} else {
@@ -369,8 +372,8 @@ func (r *runner) runWorkspaceAccess() {
 			_, _, err := r.management.UpdateRole(r.ctx, r.workspaceID, createdRoleID, &management.UpdateRoleRequest{Name: &updatedName})
 			return err
 		})
-		r.call("delete workspace role", "DELETE /v1/workspaces/:workspace_id/roles/:role_id", func() error {
-			_, err := r.management.DeleteRole(r.ctx, r.workspaceID, createdRoleID)
+		r.cleanup("delete workspace role", "DELETE /v1/workspaces/:workspace_id/roles/:role_id", func(ctx context.Context) error {
+			_, err := r.management.DeleteRole(ctx, r.workspaceID, createdRoleID)
 			return err
 		})
 	} else {
@@ -392,7 +395,7 @@ func (r *runner) runGateway() {
 		return err
 	})
 	var keyID int64
-	r.callSkipKnown("create gateway key", "POST /v1/gateway/keys", []string{"quota.gateway_keys limit exceeded"}, func() error {
+	r.writeSkipKnown("create gateway key", "POST /v1/gateway/keys", "gateway key write endpoint not exercised in smoke", []string{"quota.gateway_keys limit exceeded"}, func() error {
 		key, _, err := r.management.CreateGatewayKey(r.ctx, &management.CreateGatewayKeyRequest{
 			WorkspaceID:    r.workspaceID,
 			Name:           smokeName("SDK Smoke Key"),
@@ -410,24 +413,24 @@ func (r *runner) runGateway() {
 			return err
 		})
 		updatedName := smokeName("SDK Smoke Key Updated")
-		r.call("update gateway key", "PATCH /v1/gateway/keys/:key_id", func() error {
+		r.write("update gateway key", "PATCH /v1/gateway/keys/:key_id", "gateway key write endpoint not exercised in smoke", func() error {
 			_, _, err := r.management.UpdateGatewayKey(r.ctx, keyID, &management.UpdateGatewayKeyRequest{Name: &updatedName}, workspaceOpt)
 			return err
 		})
-		r.call("rotate gateway key", "POST /v1/gateway/keys/:key_id/rotate", func() error {
+		r.write("rotate gateway key", "POST /v1/gateway/keys/:key_id/rotate", "gateway key write endpoint not exercised in smoke", func() error {
 			_, _, err := r.management.RotateGatewayKey(r.ctx, keyID, workspaceOpt)
 			return err
 		})
-		r.call("disable gateway key", "POST /v1/gateway/keys/:key_id/disable", func() error {
+		r.write("disable gateway key", "POST /v1/gateway/keys/:key_id/disable", "gateway key write endpoint not exercised in smoke", func() error {
 			_, err := r.management.DisableGatewayKey(r.ctx, keyID, workspaceOpt)
 			return err
 		})
-		r.call("enable gateway key", "POST /v1/gateway/keys/:key_id/enable", func() error {
+		r.write("enable gateway key", "POST /v1/gateway/keys/:key_id/enable", "gateway key write endpoint not exercised in smoke", func() error {
 			_, err := r.management.EnableGatewayKey(r.ctx, keyID, workspaceOpt)
 			return err
 		})
-		r.call("delete gateway key", "DELETE /v1/gateway/keys/:key_id", func() error {
-			_, err := r.management.DeleteGatewayKey(r.ctx, keyID, workspaceOpt)
+		r.cleanup("delete gateway key", "DELETE /v1/gateway/keys/:key_id", func(ctx context.Context) error {
+			_, err := r.management.DeleteGatewayKey(ctx, keyID, workspaceOpt)
 			return err
 		})
 	} else {
@@ -695,15 +698,15 @@ func (r *runner) runBilling() {
 		r.skip("delete Stripe test payment method", "DELETE /v1/billing/payment-methods/:payment_method_id", "Stripe test payment method was not saved")
 	} else {
 		if originalDefaultPaymentMethodID != "" && originalDefaultPaymentMethodID != savedPaymentMethodID {
-			r.call("restore default payment method", "PUT /v1/billing/payment-methods/:payment_method_id/default", func() error {
-				_, _, err := r.management.SetDefaultPaymentMethod(r.ctx, originalDefaultPaymentMethodID, workspaceOpt)
+			r.cleanup("restore default payment method", "PUT /v1/billing/payment-methods/:payment_method_id/default", func(ctx context.Context) error {
+				_, _, err := r.management.SetDefaultPaymentMethod(ctx, originalDefaultPaymentMethodID, workspaceOpt)
 				return err
 			})
 		} else {
 			r.skip("restore default payment method", "PUT /v1/billing/payment-methods/:payment_method_id/default", "no previous default payment method exists")
 		}
-		r.call("delete Stripe test payment method", "DELETE /v1/billing/payment-methods/:payment_method_id", func() error {
-			_, err := r.management.DeletePaymentMethod(r.ctx, savedPaymentMethodID, workspaceOpt)
+		r.cleanup("delete Stripe test payment method", "DELETE /v1/billing/payment-methods/:payment_method_id", func(ctx context.Context) error {
+			_, err := r.management.DeletePaymentMethod(ctx, savedPaymentMethodID, workspaceOpt)
 			return err
 		})
 	}
@@ -764,7 +767,7 @@ func (r *runner) runFinancial() {
 	} else if caps.Workspace == nil || caps.Workspace.ScopeType == "" || caps.Workspace.ScopeID == "" {
 		r.skip("update scope budget cap", "PATCH /v1/workspaces/:workspace_id/governance/financial/budget-caps/:scope_type/:scope_id", "workspace budget cap is not configured")
 	} else {
-		r.call("update scope budget cap", "PATCH /v1/workspaces/:workspace_id/governance/financial/budget-caps/:scope_type/:scope_id", func() error {
+		r.write("update scope budget cap", "PATCH /v1/workspaces/:workspace_id/governance/financial/budget-caps/:scope_type/:scope_id", "financial write endpoint not exercised in smoke", func() error {
 			_, _, err := r.management.UpdateScopeBudgetCap(r.ctx, r.workspaceID, caps.Workspace.ScopeType, caps.Workspace.ScopeID, &management.UpdateScopeBudgetCapRequest{Limit: caps.Workspace.Limit})
 			return err
 		})
@@ -785,7 +788,7 @@ func (r *runner) runFinancial() {
 		r.skip("update user spending limit", "PATCH /v1/workspaces/:workspace_id/governance/financial/spending-limits/users/:user_id", "no user spending limit is configured")
 	} else {
 		limit := limits.Items[0]
-		r.call("update user spending limit", "PATCH /v1/workspaces/:workspace_id/governance/financial/spending-limits/users/:user_id", func() error {
+		r.write("update user spending limit", "PATCH /v1/workspaces/:workspace_id/governance/financial/spending-limits/users/:user_id", "financial write endpoint not exercised in smoke", func() error {
 			_, _, err := r.management.UpdateUserSpendingLimit(r.ctx, r.workspaceID, limit.UserID, &management.UpdateUserSpendingLimitRequest{
 				DailyLimit: &limit.DailyLimit, WeeklyLimit: &limit.WeeklyLimit, MonthlyLimit: &limit.MonthlyLimit,
 			})
@@ -824,7 +827,7 @@ func (r *runner) runWebhooks() {
 		_, _, err := r.management.ListWebhookEndpoints(r.ctx, management.ListOptions{Limit: 5}, workspaceOpt)
 		return err
 	})
-	r.call("create webhook endpoint", "POST /v1/webhook-endpoints", func() error {
+	r.write("create webhook endpoint", "POST /v1/webhook-endpoints", "webhook write endpoint not exercised in smoke", func() error {
 		endpoint, _, err := r.management.CreateWebhookEndpoint(r.ctx, &management.CreateWebhookEndpointRequest{
 			WorkspaceID: r.workspaceID,
 			URL:         "https://example.com/owlvigil/sdk-openapi-smoke",
@@ -842,26 +845,26 @@ func (r *runner) runWebhooks() {
 			return err
 		})
 		disabled := "disabled"
-		r.call("update webhook endpoint", "PATCH /v1/webhook-endpoints/:endpoint_id", func() error {
+		r.write("update webhook endpoint", "PATCH /v1/webhook-endpoints/:endpoint_id", "webhook write endpoint not exercised in smoke", func() error {
 			_, _, err := r.management.UpdateWebhookEndpoint(r.ctx, endpointID, &management.UpdateWebhookEndpointRequest{
 				EventTypes: []string{"webhook.test"},
 				Status:     &disabled,
 			}, workspaceOpt)
 			return err
 		})
-		r.call("enable webhook endpoint", "POST /v1/webhook-endpoints/:endpoint_id/enable", func() error {
+		r.write("enable webhook endpoint", "POST /v1/webhook-endpoints/:endpoint_id/enable", "webhook write endpoint not exercised in smoke", func() error {
 			_, err := r.management.EnableWebhookEndpoint(r.ctx, endpointID, workspaceOpt)
 			return err
 		})
-		r.call("disable webhook endpoint", "POST /v1/webhook-endpoints/:endpoint_id/disable", func() error {
+		r.write("disable webhook endpoint", "POST /v1/webhook-endpoints/:endpoint_id/disable", "webhook write endpoint not exercised in smoke", func() error {
 			_, err := r.management.DisableWebhookEndpoint(r.ctx, endpointID, workspaceOpt)
 			return err
 		})
-		r.call("rotate webhook secret", "POST /v1/webhook-endpoints/:endpoint_id/rotate-secret", func() error {
+		r.write("rotate webhook secret", "POST /v1/webhook-endpoints/:endpoint_id/rotate-secret", "webhook write endpoint not exercised in smoke", func() error {
 			_, _, err := r.management.RotateWebhookSecret(r.ctx, endpointID, workspaceOpt)
 			return err
 		})
-		r.call("test webhook endpoint", "POST /v1/webhook-endpoints/:endpoint_id/test", func() error {
+		r.write("test webhook endpoint", "POST /v1/webhook-endpoints/:endpoint_id/test", "webhook write endpoint not exercised in smoke", func() error {
 			_, err := r.management.TestWebhookEndpoint(r.ctx, endpointID, workspaceOpt)
 			return err
 		})
@@ -900,15 +903,15 @@ func (r *runner) runWebhooks() {
 			_, _, err := r.management.GetWebhookEvent(r.ctx, eventID, workspaceOpt)
 			return err
 		})
-		r.call("retry webhook event", "POST /v1/webhook-events/:event_id/retry", func() error {
+		r.write("retry webhook event", "POST /v1/webhook-events/:event_id/retry", "webhook write endpoint not exercised in smoke", func() error {
 			_, err := r.management.RetryWebhookEvent(r.ctx, eventID, workspaceOpt)
 			return err
 		})
-		r.call("redeliver webhook event", "POST /v1/webhook-events/:event_id/redeliver", func() error {
+		r.write("redeliver webhook event", "POST /v1/webhook-events/:event_id/redeliver", "webhook write endpoint not exercised in smoke", func() error {
 			_, err := r.management.RedeliverWebhookEvent(r.ctx, eventID, workspaceOpt)
 			return err
 		})
-		r.call("bulk redeliver webhook events", "POST /v1/webhook-events/bulk-redeliver", func() error {
+		r.write("bulk redeliver webhook events", "POST /v1/webhook-events/bulk-redeliver", "webhook write endpoint not exercised in smoke", func() error {
 			_, err := r.management.BulkRedeliverWebhookEvents(r.ctx, &management.BulkRedeliverRequest{
 				WorkspaceID: r.workspaceID,
 				EndpointID:  &endpointID,
@@ -924,8 +927,8 @@ func (r *runner) runWebhooks() {
 		r.skip("bulk redeliver webhook events", "POST /v1/webhook-events/bulk-redeliver", "webhook events list returned no events")
 	}
 	if endpointID > 0 {
-		r.call("delete webhook endpoint", "DELETE /v1/webhook-endpoints/:endpoint_id", func() error {
-			_, err := r.management.DeleteWebhookEndpoint(r.ctx, endpointID, workspaceOpt)
+		r.cleanup("delete webhook endpoint", "DELETE /v1/webhook-endpoints/:endpoint_id", func(ctx context.Context) error {
+			_, err := r.management.DeleteWebhookEndpoint(ctx, endpointID, workspaceOpt)
 			return err
 		})
 	} else {
@@ -952,6 +955,24 @@ func (r *runner) write(name, contract, reason string, fn func() error) {
 		return
 	}
 	r.call(name, contract, fn)
+}
+
+func (r *runner) writeSkipKnown(name, contract, reason string, known []string, fn func() error) {
+	if !r.writes {
+		r.skip(name, contract, reason)
+		return
+	}
+	r.callSkipKnown(name, contract, known, fn)
+}
+
+func (r *runner) cleanup(name, contract string, fn func(context.Context) error) {
+	ctx, cancel := r.cleanupContext()
+	defer cancel()
+	r.recordErr(name, contract, fn(ctx))
+}
+
+func (r *runner) cleanupContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(r.ctx), cleanupTimeout)
 }
 
 func (r *runner) recordErr(name, contract string, err error) {

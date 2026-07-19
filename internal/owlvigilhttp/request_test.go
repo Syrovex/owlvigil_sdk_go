@@ -73,6 +73,31 @@ func TestClientDoHeadersEnvelopeAndRetry(t *testing.T) {
 	}
 }
 
+func TestClientDo_DoesNotRetryMutationWithoutIdempotencyKey(t *testing.T) {
+	t.Parallel()
+
+	var attempts atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts.Add(1)
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(`{"code":"unavailable","message":"try again"}`))
+	}))
+	defer server.Close()
+
+	cfg := owlvigil.DefaultConfig(server.URL)
+	cfg.RetryMax = 2
+	cfg.RetryWait = time.Millisecond
+	client := New(cfg)
+
+	_, err := client.Do(context.Background(), http.MethodPost, "/billing/subscription/in-app", nil, map[string]string{"plan_id": "pro"}, nil)
+	if err == nil {
+		t.Fatal("Do() error = nil, want service unavailable")
+	}
+	if got, want := attempts.Load(), int32(1); got != want {
+		t.Fatalf("attempts = %d, want %d for a mutation without an idempotency key", got, want)
+	}
+}
+
 func TestClientDoAPIErrorRedactsSecret(t *testing.T) {
 	t.Parallel()
 
