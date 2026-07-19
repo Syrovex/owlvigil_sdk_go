@@ -44,3 +44,22 @@ func TestWriteSmokeEnabled(t *testing.T) {
 		})
 	}
 }
+
+func TestStripePaymentMethodID(t *testing.T) {
+	tests := []struct {
+		value string
+		want  string
+	}{
+		{value: "pm_card_visa", want: "pm_card_visa"},
+		{value: " pm_card_visa ", want: "pm_card_visa"},
+		{value: "", want: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.value, func(t *testing.T) {
+			if got := stripePaymentMethodID(tt.value); got != tt.want {
+				t.Errorf("stripePaymentMethodID(%q) = %q, want %q", tt.value, got, tt.want)
+			}
+		})
+	}
+}

@@ -10,7 +10,7 @@ This example demonstrates how to use different environments with the OwlVigil Go
 client := management.NewClient(
     owlvigil.WithAPIKey(apiKey),
 )
-// Uses: https://api.owlvigil.com/open/v1
+// Uses: https://api.owlvigil.com/v1
 ```
 
 ### 2. Staging Environment
@@ -20,7 +20,7 @@ client := management.NewClient(
     owlvigil.WithEnvironment(owlvigil.EnvironmentStaging),
     owlvigil.WithAPIKey(stagingAPIKey),
 )
-// Uses: https://open-staging.owlvigil.com/open/v1
+// Uses: https://stagingapi.owlvigil.com/v1
 ```
 
 ### 3. Local Development Environment
@@ -30,7 +30,7 @@ client := management.NewClient(
     owlvigil.WithEnvironment(owlvigil.EnvironmentLocal),
     owlvigil.WithAPIKey(devAPIKey),
 )
-// Uses: http://localhost:8081/open/v1
+// Uses: http://localhost:8081/v1
 ```
 
 ### 4. Using Environment Variable
@@ -67,6 +67,6 @@ go run main.go
 
 | Environment | Gateway API | Management API | OAuth API |
 |-------------|-------------|----------------|-----------|
-| Production  | `api.owlvigil.com` | `api.owlvigil.com/open/v1` | `open.owlvigil.com` |
-| Staging     | `apistaging.owlvigil.com` | `openstaging.owlvigil.com/open/v1` | `openstaging.owlvigil.com` |
-| Local       | `localhost:8080` | `localhost:8081/open/v1` | `localhost:8081` |
+| Production  | `gateway.owlvigil.com` | `api.owlvigil.com/v1` | `open.owlvigil.com` |
+| Staging     | `staginggateway.owlvigil.com` | `stagingapi.owlvigil.com/v1` | `openstaging.owlvigil.com` |
+| Local       | `localhost:8080` | `localhost:8081/v1` | `localhost:8081` |

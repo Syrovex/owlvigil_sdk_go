@@ -10,8 +10,8 @@ client := management.NewClient(
     owlvigil.WithAPIKey(apiKey),
 )
 ```
-- Gateway: `https://api.owlvigil.com`
-- Management: `https://api.owlvigil.com/open/v1`
+- Gateway: `https://gateway.owlvigil.com`
+- Management: `https://api.owlvigil.com/v1`
 - OAuth: `https://open.owlvigil.com`
 
 ### Staging
@@ -21,8 +21,8 @@ client := management.NewClient(
     owlvigil.WithAPIKey(stagingAPIKey),
 )
 ```
-- Gateway: `https://staging.owlvigil.com`
-- Management: `https://staging.owlvigil.com/open/v1`
+- Gateway: `https://staginggateway.owlvigil.com`
+- Management: `https://stagingapi.owlvigil.com/v1`
 - OAuth: `https://openstaging.owlvigil.com`
 
 ### Local Development
@@ -33,7 +33,7 @@ client := management.NewClient(
 )
 ```
 - Gateway: `http://localhost:8080`
-- Management: `http://localhost:8081/open/v1`
+- Management: `http://localhost:8081/v1`
 - OAuth: `http://localhost:8081`
 
 ## Using Environment Variables

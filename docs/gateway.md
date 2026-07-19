@@ -1,6 +1,6 @@
 # Gateway
 
-Gateway uses `https://api.owlvigil.com` by default. It must not use `open.owlvigil.com` for model invocation.
+Gateway uses `https://gateway.owlvigil.com` by default. It must not use the OpenAPI Management or OAuth domains for model invocation.
 
 ## Chat Completions
 

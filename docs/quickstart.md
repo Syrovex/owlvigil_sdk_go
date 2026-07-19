@@ -3,8 +3,7 @@
 ## Choose a client
 
 Create a Gateway client for model inference and a Management client for
-workspace configuration. They use different credentials even though their
-production host is the same:
+workspace configuration. They use different credentials and production hosts:
 
 ```go
 gatewayClient := gateway.NewClient(
@@ -26,13 +25,13 @@ Install:
 go get github.com/owlvigil/owlvigil-go
 ```
 
-Gateway calls go to `https://api.owlvigil.com` and use Gateway keys:
+Gateway calls go to `https://gateway.owlvigil.com` and use Gateway keys:
 
 ```go
 client := gateway.NewClient(owlvigil.WithAPIKey(os.Getenv("OWLVIGIL_GATEWAY_KEY")))
 ```
 
-Management calls go to `https://api.owlvigil.com/open/v1` and use scoped service-account API keys:
+OpenAPI Management calls go to `https://api.owlvigil.com/v1` and use scoped service-account API keys:
 
 ```go
 client := management.NewClient(owlvigil.WithAPIKey(os.Getenv("OWLVIGIL_API_KEY")))
@@ -41,8 +40,8 @@ client := management.NewClient(owlvigil.WithAPIKey(os.Getenv("OWLVIGIL_API_KEY")
 For tests or private deployments, override domains:
 
 ```go
-gatewayClient := gateway.NewClient(owlvigil.WithBaseURL("https://api.private.example.com"))
-managementClient := management.NewClient(owlvigil.WithBaseURL("https://open.private.example.com/open/v1"))
+gatewayClient := gateway.NewClient(owlvigil.WithBaseURL("https://gateway.private.example.com"))
+managementClient := management.NewClient(owlvigil.WithBaseURL("https://api.private.example.com/v1"))
 oauthClient := oauth2.NewClient(owlvigil.WithBaseURL("https://open.private.example.com"))
 ```
 

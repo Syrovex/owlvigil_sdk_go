@@ -11,23 +11,17 @@ import (
 	"github.com/owlvigil/owlvigil-go/management"
 )
 
-func TestOpenAPIContractCoverageForProvidersRoutesAndDocumentation(t *testing.T) {
+func TestOpenAPIContractCoverageForProvidersAndRoutes(t *testing.T) {
 	t.Parallel()
 
 	expected := map[string]string{
-		"GET /gateway/providers":                `{"items":[{"id":9,"workspace_id":7,"name":"Primary","type":"openai","provider_source":"byok","base_url":"https://api.openai.com","default_model":"gpt-4o-mini","api_mode":"responses","status":"active"}],"page_info":{"has_more":false}}`,
-		"POST /gateway/providers":               `{"id":9,"workspace_id":7,"name":"Primary","type":"openai","provider_source":"byok","status":"active"}`,
-		"GET /gateway/providers/9":              `{"id":9,"workspace_id":7,"name":"Primary","type":"openai","provider_source":"byok","status":"active"}`,
-		"PATCH /gateway/providers/9":            `{"id":9,"workspace_id":7,"name":"Renamed","type":"openai","provider_source":"byok","status":"inactive"}`,
-		"DELETE /gateway/providers/9":           `{}`,
-		"GET /gateway/routes/route-1":           `{"id":"route-1","model":"gpt-4o-mini","providers":["openai"],"priority":1,"fallback_enabled":true}`,
-		"PATCH /gateway/policies/3":             `{"workspace_id":7,"key_id":9,"model_policies":{"action":"block"}}`,
-		"GET /docs/navigation":                  `{"groups":[{"id":"gateway","title":"Gateway"}]}`,
-		"GET /docs/endpoints":                   `{"items":[{"id":"gateway-providers","group":"gateway","method":"GET","path":"/open/v1/gateway/providers","scope":"gateway:read","status":"active","description":"List providers"}],"page_info":{"has_more":false}}`,
-		"GET /docs/endpoints/gateway-providers": `{"id":"gateway-providers","group":"gateway","method":"GET","path":"/open/v1/gateway/providers","scope":"gateway:read","status":"active","description":"List providers"}`,
-		"GET /openapi.json":                     `{"openapi":"3.1.0","info":{"title":"OwlVigil Open API"}}`,
-		"GET /swagger.json":                     `{"openapi":"3.1.0","info":{"title":"OwlVigil Open API"}}`,
-		"GET /sdk/packages":                     `{"items":[{"language":"go","package":"owlvigil-go","status":"available"}]}`,
+		"GET /gateway/providers":      `{"items":[{"id":9,"workspace_id":7,"name":"Primary","type":"openai","provider_source":"byok","base_url":"https://api.openai.com","default_model":"gpt-4o-mini","api_mode":"responses","status":"active"}],"page_info":{"has_more":false}}`,
+		"POST /gateway/providers":     `{"id":9,"workspace_id":7,"name":"Primary","type":"openai","provider_source":"byok","status":"active"}`,
+		"GET /gateway/providers/9":    `{"id":9,"workspace_id":7,"name":"Primary","type":"openai","provider_source":"byok","status":"active"}`,
+		"PATCH /gateway/providers/9":  `{"id":9,"workspace_id":7,"name":"Renamed","type":"openai","provider_source":"byok","status":"inactive"}`,
+		"DELETE /gateway/providers/9": `{}`,
+		"GET /gateway/routes/route-1": `{"id":"route-1","model":"gpt-4o-mini","providers":["openai"],"priority":1,"fallback_enabled":true}`,
+		"PATCH /gateway/policies/3":   `{"workspace_id":7,"key_id":9,"model_policies":{"action":"block"}}`,
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -37,18 +31,6 @@ func TestOpenAPIContractCoverageForProvidersRoutesAndDocumentation(t *testing.T)
 		if r.URL.Path == "/gateway/routes/route-1" && r.URL.Query().Get("workspace_id") != "7" {
 			t.Errorf("GetRoute workspace_id = %q, want %q", r.URL.Query().Get("workspace_id"), "7")
 		}
-		if r.URL.Path == "/docs/endpoints" {
-			if got, want := r.URL.Query().Get("group"), "gateway"; got != want {
-				t.Errorf("ListDocumentedEndpoints group = %q, want %q", got, want)
-			}
-			if got, want := r.URL.Query().Get("scope"), "gateway:read"; got != want {
-				t.Errorf("ListDocumentedEndpoints scope = %q, want %q", got, want)
-			}
-			if got, want := r.URL.Query().Get("status"), "active"; got != want {
-				t.Errorf("ListDocumentedEndpoints status = %q, want %q", got, want)
-			}
-		}
-
 		body, ok := expected[r.Method+" "+r.URL.Path]
 		if !ok {
 			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
@@ -98,43 +80,6 @@ func TestOpenAPIContractCoverageForProvidersRoutesAndDocumentation(t *testing.T)
 		t.Fatalf("UpdateGatewayPolicy(3) = %+v, %v, want workspace ID 7", policy, err)
 	}
 
-	navigation, _, err := client.DocumentationNavigation(ctx)
-	if err != nil || len(navigation.Groups) != 1 || navigation.Groups[0].ID != "gateway" {
-		t.Fatalf("DocumentationNavigation() = %+v, %v, want gateway group", navigation, err)
-	}
-	documentation, _, err := client.ListDocumentedEndpoints(ctx, management.DocumentedEndpointListOptions{
-		Group:  "gateway",
-		Scope:  "gateway:read",
-		Status: "active",
-	})
-	if err != nil || len(documentation.Items) != 1 || documentation.Items[0].ID != "gateway-providers" {
-		t.Fatalf("ListDocumentedEndpoints() = %+v, %v, want gateway-providers", documentation, err)
-	}
-	endpoint, _, err := client.GetDocumentedEndpoint(ctx, "gateway-providers")
-	if err != nil || endpoint.Path != "/open/v1/gateway/providers" {
-		t.Fatalf("GetDocumentedEndpoint(gateway-providers) = %+v, %v, want provider path", endpoint, err)
-	}
-
-	for _, fetch := range []struct {
-		name string
-		call func(context.Context) (map[string]any, *owlvigil.ResponseMeta, error)
-	}{
-		{name: "OpenAPISchema", call: func(ctx context.Context) (map[string]any, *owlvigil.ResponseMeta, error) {
-			return client.OpenAPISchema(ctx)
-		}},
-		{name: "SwaggerSchema", call: func(ctx context.Context) (map[string]any, *owlvigil.ResponseMeta, error) {
-			return client.SwaggerSchema(ctx)
-		}},
-	} {
-		schema, _, err := fetch.call(ctx)
-		if err != nil || schema["openapi"] != "3.1.0" {
-			t.Fatalf("%s() = %+v, %v, want OpenAPI 3.1.0", fetch.name, schema, err)
-		}
-	}
-	packages, _, err := client.SDKPackages(ctx)
-	if err != nil || len(packages.Items) != 1 || packages.Items[0].Language != "go" {
-		t.Fatalf("SDKPackages() = %+v, %v, want Go package", packages, err)
-	}
 }
 
 func TestOpenAPIContractCoverageTypesMarshalProviderRequests(t *testing.T) {

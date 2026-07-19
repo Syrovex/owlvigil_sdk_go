@@ -4,7 +4,7 @@
 
 This repository is the `github.com/owlvigil/owlvigil-go` Go SDK. Public API
 packages are organized by surface: `gateway/` for model calls,
-`management/` for `/open/v1` operations, `oauth2/` for OAuth flows, and
+`management/` for `/v1` operations, `oauth2/` for OAuth flows, and
 `webhook/` for signature verification. Shared HTTP, retry, redaction, and SSE
 code belongs in `internal/`. Runnable programs live in `examples/`; their
 environment-file loader is in `examples/internal/envfile`. Keep API guides in

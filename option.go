@@ -10,8 +10,10 @@ import (
 )
 
 const (
-	DefaultGatewayBaseURL    = "https://api.owlvigil.com"
-	DefaultManagementBaseURL = "https://api.owlvigil.com/open/v1"
+	// DefaultGatewayBaseURL deliberately omits /v1 because Gateway client
+	// methods include their versioned paths.
+	DefaultGatewayBaseURL    = "https://gateway.owlvigil.com"
+	DefaultManagementBaseURL = "https://api.owlvigil.com/v1"
 	DefaultOAuthBaseURL      = "https://open.owlvigil.com"
 	DefaultHTTPTimeout       = 60 * time.Second
 )
@@ -54,7 +56,7 @@ type TokenProvider func(context.Context) (string, error)
 func DefaultConfig(baseURL string) Config {
 	// Validate baseURL is not empty
 	if baseURL == "" {
-		baseURL = "https://api.owlvigil.com"
+		baseURL = DefaultGatewayBaseURL
 	}
 	return Config{
 		BaseURL:    baseURL,
@@ -137,15 +139,18 @@ func convertToStagingURL(prodURL string) string {
 	u, err := url.Parse(prodURL)
 	if err != nil {
 		// Fallback to string replacement if parsing fails
-		url := strings.Replace(prodURL, "api.owlvigil.com", "apistaging.owlvigil.com", 1)
+		url := strings.Replace(prodURL, "gateway.owlvigil.com", "staginggateway.owlvigil.com", 1)
+		url = strings.Replace(url, "api.owlvigil.com", "stagingapi.owlvigil.com", 1)
 		url = strings.Replace(url, "open.owlvigil.com", "openstaging.owlvigil.com", 1)
 		return url
 	}
 
 	// Replace host if it matches known production hosts
 	switch u.Host {
+	case "gateway.owlvigil.com":
+		u.Host = "staginggateway.owlvigil.com"
 	case "api.owlvigil.com":
-		u.Host = "staging.owlvigil.com"
+		u.Host = "stagingapi.owlvigil.com"
 	case "open.owlvigil.com":
 		u.Host = "openstaging.owlvigil.com"
 	}
@@ -158,30 +163,32 @@ func convertToLocalURL(prodURL string) string {
 	u, err := url.Parse(prodURL)
 	if err != nil {
 		// Fallback: check string patterns
-		if strings.Contains(prodURL, "/open/v1") {
-			return "http://localhost:8081/open/v1"
+		if strings.Contains(prodURL, "/v1") {
+			return "http://localhost:8081/v1"
 		}
-		if strings.Contains(prodURL, "api.owlvigil.com") {
+		if strings.Contains(prodURL, "gateway.owlvigil.com") {
 			return "http://localhost:8080"
+		} else if strings.Contains(prodURL, "api.owlvigil.com") {
+			return "http://localhost:8081/v1"
 		} else if strings.Contains(prodURL, "open.owlvigil.com") {
-			if strings.Contains(prodURL, "/open/v1") {
-				return "http://localhost:8081/open/v1"
-			}
 			return "http://localhost:8081"
 		}
 		return "http://localhost:8080"
 	}
 
-	// Management APIs share the public API host but use a distinct local port.
-	if strings.Contains(u.Path, "/open/v1") {
-		return "http://localhost:8081/open/v1"
+	// Management APIs use the /v1 base path and a distinct local port.
+	if strings.HasPrefix(u.Path, "/v1") {
+		return "http://localhost:8081/v1"
 	}
 
 	// Determine service based on host
 	switch u.Host {
-	case "api.owlvigil.com", "staging.owlvigil.com", "apistaging.owlvigil.com":
+	case "gateway.owlvigil.com", "staginggateway.owlvigil.com":
 		// Gateway API
 		return "http://localhost:8080"
+	case "api.owlvigil.com", "stagingapi.owlvigil.com":
+		// Management API
+		return "http://localhost:8081/v1"
 	case "open.owlvigil.com", "openstaging.owlvigil.com":
 		// Management/OAuth API
 		return "http://localhost:8081"

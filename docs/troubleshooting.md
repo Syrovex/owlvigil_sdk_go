@@ -2,7 +2,7 @@
 
 ## Wrong Domain
 
-Gateway model calls and Management APIs use `https://api.owlvigil.com` (Management paths start with `/open/v1`). OAuth2.0 flows use `https://open.owlvigil.com`.
+Gateway model calls use `https://gateway.owlvigil.com`; OpenAPI Management uses `https://api.owlvigil.com/v1`. OAuth2.0 flows use `https://open.owlvigil.com`.
 
 ## 401 Unauthorized
 

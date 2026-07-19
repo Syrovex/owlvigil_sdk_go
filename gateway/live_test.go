@@ -27,8 +27,8 @@ func TestLiveGatewayReadOnly(t *testing.T) {
 		owlvigil.WithAPIKey(apiKey),
 		owlvigil.WithoutRetry(),
 	)
-	if os.Getenv("OWLVIGIL_ENV") == "staging" && client.BaseURL() != "https://staging.owlvigil.com" {
-		t.Fatalf("Gateway staging BaseURL = %q, want %q", client.BaseURL(), "https://staging.owlvigil.com")
+	if os.Getenv("OWLVIGIL_ENV") == "staging" && client.BaseURL() != "https://staginggateway.owlvigil.com" {
+		t.Fatalf("Gateway staging BaseURL = %q, want %q", client.BaseURL(), "https://staginggateway.owlvigil.com")
 	}
 	models, _, err := client.ListModels(ctx)
 	if err != nil {

@@ -28,6 +28,11 @@ type SetupIntent struct {
 	Status        string `json:"status"`
 }
 
+// CreatePaymentMethodSetupIntentRequest creates a SetupIntent for a workspace.
+type CreatePaymentMethodSetupIntentRequest struct {
+	WorkspaceID int64 `json:"workspace_id"`
+}
+
 // SavePaymentMethodRequest saves a payment method.
 type SavePaymentMethodRequest struct {
 	PaymentMethodID string `json:"payment_method_id"`
@@ -47,7 +52,19 @@ func (c *Client) ListPaymentMethods(ctx context.Context, opts ListOptions, reqOp
 // CreatePaymentMethodSetupIntent creates a Stripe SetupIntent.
 func (c *Client) CreatePaymentMethodSetupIntent(ctx context.Context, reqOpts ...owlvigil.RequestOption) (*SetupIntent, *owlvigil.ResponseMeta, error) {
 	var out SetupIntent
-	meta, err := c.http.Do(ctx, http.MethodPost, "/billing/payment-methods/setup-intent", nil, nil, &out, reqOpts...)
+	meta, err := c.http.Do(ctx, http.MethodPost, "/billing/payment-methods/setup-intent", nil, struct{}{}, &out, reqOpts...)
+	if err != nil {
+		return nil, meta, err
+	}
+	return &out, meta, nil
+}
+
+// CreatePaymentMethodSetupIntentForWorkspace creates a Stripe SetupIntent for
+// the specified workspace. Use the returned client secret with Stripe.js to
+// collect and confirm the card; do not send card data through the SDK.
+func (c *Client) CreatePaymentMethodSetupIntentForWorkspace(ctx context.Context, workspaceID int64, reqOpts ...owlvigil.RequestOption) (*SetupIntent, *owlvigil.ResponseMeta, error) {
+	var out SetupIntent
+	meta, err := c.http.Do(ctx, http.MethodPost, "/billing/payment-methods/setup-intent", nil, CreatePaymentMethodSetupIntentRequest{WorkspaceID: workspaceID}, &out, reqOpts...)
 	if err != nil {
 		return nil, meta, err
 	}

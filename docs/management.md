@@ -1,6 +1,6 @@
 # Management API
 
-The Management client calls `https://api.owlvigil.com/open/v1` and requires a
+The OpenAPI Management client calls `https://api.owlvigil.com/v1` and requires a
 scoped service-account API key. It is separate from the Gateway key used to
 invoke models.
 
@@ -46,15 +46,3 @@ the operations.
 | `management/payment_methods.go`, `management/orders.go` | [Billing](billing.md) | Payment method setup and order confirmation |
 | `management/webhooks.go` | [Webhooks](webhooks.md) | Outbound endpoints and delivery events |
 | `management/user.go` | [Account](account.md) | Profile, support, notifications, and invitations |
-| `management/documentation.go` | This page | Navigation, endpoint catalog, OpenAPI/Swagger schema, SDK packages |
-
-## Management metadata and schemas
-
-`DocumentationNavigation`, `ListDocumentedEndpoints`, and
-`GetDocumentedEndpoint` retrieve the server-provided endpoint catalog.
-`OpenAPISchema` and `SwaggerSchema` return the published API schema as
-`map[string]any`; persist it only when you have a schema-consumer that needs a
-snapshot. `SDKPackages` lists published SDK package metadata.
-
-These are read-only discovery operations. They do not replace the SDK's typed
-methods, which provide request construction and error handling.

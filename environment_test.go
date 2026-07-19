@@ -19,13 +19,13 @@ func TestWithEnvironment(t *testing.T) {
 			name:        "gateway production",
 			baseURL:     owlvigil.DefaultGatewayBaseURL,
 			environment: owlvigil.EnvironmentProduction,
-			want:        "https://api.owlvigil.com",
+			want:        "https://gateway.owlvigil.com",
 		},
 		{
 			name:        "gateway staging",
 			baseURL:     owlvigil.DefaultGatewayBaseURL,
 			environment: owlvigil.EnvironmentStaging,
-			want:        "https://staging.owlvigil.com",
+			want:        "https://staginggateway.owlvigil.com",
 		},
 		{
 			name:        "gateway local",
@@ -37,19 +37,19 @@ func TestWithEnvironment(t *testing.T) {
 			name:        "management production",
 			baseURL:     owlvigil.DefaultManagementBaseURL,
 			environment: owlvigil.EnvironmentProduction,
-			want:        "https://api.owlvigil.com/open/v1",
+			want:        "https://api.owlvigil.com/v1",
 		},
 		{
 			name:        "management staging",
 			baseURL:     owlvigil.DefaultManagementBaseURL,
 			environment: owlvigil.EnvironmentStaging,
-			want:        "https://staging.owlvigil.com/open/v1",
+			want:        "https://stagingapi.owlvigil.com/v1",
 		},
 		{
 			name:        "management local",
 			baseURL:     owlvigil.DefaultManagementBaseURL,
 			environment: owlvigil.EnvironmentLocal,
-			want:        "http://localhost:8081/open/v1",
+			want:        "http://localhost:8081/v1",
 		},
 		{
 			name:        "oauth production",
@@ -97,13 +97,13 @@ func TestWithEnvironmentFromEnv(t *testing.T) {
 			name:    "empty env defaults to production",
 			baseURL: owlvigil.DefaultGatewayBaseURL,
 			envVar:  "",
-			want:    "https://api.owlvigil.com",
+			want:    "https://gateway.owlvigil.com",
 		},
 		{
 			name:    "staging env",
 			baseURL: owlvigil.DefaultGatewayBaseURL,
 			envVar:  "staging",
-			want:    "https://staging.owlvigil.com",
+			want:    "https://staginggateway.owlvigil.com",
 		},
 		{
 			name:    "local env",
@@ -115,7 +115,7 @@ func TestWithEnvironmentFromEnv(t *testing.T) {
 			name:    "production env explicit",
 			baseURL: owlvigil.DefaultGatewayBaseURL,
 			envVar:  "production",
-			want:    "https://api.owlvigil.com",
+			want:    "https://gateway.owlvigil.com",
 		},
 	}
 
@@ -145,8 +145,8 @@ func TestEnvironmentWithBaseURL(t *testing.T) {
 
 	// Apply environment first
 	owlvigil.WithEnvironment(owlvigil.EnvironmentStaging)(&config)
-	if config.BaseURL != "https://staging.owlvigil.com" {
-		t.Errorf("After WithEnvironment, BaseURL = %v, want %v", config.BaseURL, "https://staging.owlvigil.com")
+	if config.BaseURL != "https://staginggateway.owlvigil.com" {
+		t.Errorf("After WithEnvironment, BaseURL = %v, want %v", config.BaseURL, "https://staginggateway.owlvigil.com")
 	}
 
 	// Apply custom BaseURL (should override)

@@ -5,7 +5,7 @@ import (
 	"github.com/owlvigil/owlvigil-go/internal/owlvigilhttp"
 )
 
-// Client calls OwlVigil Gateway endpoints on api.owlvigil.com by default.
+// Client calls OwlVigil Gateway endpoints on gateway.owlvigil.com by default.
 type Client struct {
 	http *owlvigilhttp.Client
 }

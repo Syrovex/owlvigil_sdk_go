@@ -2,6 +2,7 @@ package management_test
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -237,6 +238,15 @@ func TestPaymentMethodsEndpoints(t *testing.T) {
 		if !ok {
 			t.Fatalf("unexpected request %s", key)
 		}
+		if key == "POST /billing/payment-methods/setup-intent" {
+			gotBody, err := io.ReadAll(r.Body)
+			if err != nil {
+				t.Fatalf("read setup intent body: %v", err)
+			}
+			if string(gotBody) != "{}" {
+				t.Fatalf("CreatePaymentMethodSetupIntent() body = %q, want %q", gotBody, "{}")
+			}
+		}
 		_, _ = w.Write([]byte(body))
 	}))
 	defer server.Close()
@@ -284,6 +294,34 @@ func TestPaymentMethodsEndpoints(t *testing.T) {
 	_, err = client.DeletePaymentMethod(ctx, "pm_1")
 	if err != nil {
 		t.Fatalf("DeletePaymentMethod failed: %v", err)
+	}
+}
+
+func TestCreatePaymentMethodSetupIntentForWorkspace(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/billing/payment-methods/setup-intent" {
+			t.Fatalf("request = %s %s, want POST /billing/payment-methods/setup-intent", r.Method, r.URL.Path)
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("read setup intent body: %v", err)
+		}
+		if string(body) != `{"workspace_id":123}` {
+			t.Fatalf("CreatePaymentMethodSetupIntentForWorkspace() body = %q, want %q", body, `{"workspace_id":123}`)
+		}
+		_, _ = w.Write([]byte(`{"setup_intent_id":"seti_1","client_secret":"secret_1","status":"requires_payment_method"}`))
+	}))
+	defer server.Close()
+
+	client := management.NewClient(owlvigil.WithBaseURL(server.URL), owlvigil.WithAccessToken("test"))
+	intent, _, err := client.CreatePaymentMethodSetupIntentForWorkspace(context.Background(), 123)
+	if err != nil {
+		t.Fatalf("CreatePaymentMethodSetupIntentForWorkspace() error = %v", err)
+	}
+	if intent.SetupIntentID != "seti_1" {
+		t.Fatalf("CreatePaymentMethodSetupIntentForWorkspace() id = %q, want %q", intent.SetupIntentID, "seti_1")
 	}
 }
 

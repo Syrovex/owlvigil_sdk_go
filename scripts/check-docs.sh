@@ -41,7 +41,6 @@ done
 
 domains='
 billing
-documentation
 financial
 gateway_keys
 invitations

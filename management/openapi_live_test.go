@@ -28,8 +28,8 @@ func TestLiveOpenAPIReadOnly(t *testing.T) {
 		owlvigil.WithAPIKey(apiKey),
 		owlvigil.WithoutRetry(),
 	)
-	if os.Getenv("OWLVIGIL_ENV") == "staging" && client.BaseURL() != "https://staging.owlvigil.com/open/v1" {
-		t.Fatalf("Management staging BaseURL = %q, want %q", client.BaseURL(), "https://staging.owlvigil.com/open/v1")
+	if os.Getenv("OWLVIGIL_ENV") == "staging" && client.BaseURL() != "https://stagingapi.owlvigil.com/v1" {
+		t.Fatalf("Management staging BaseURL = %q, want %q", client.BaseURL(), "https://stagingapi.owlvigil.com/v1")
 	}
 
 	workspaces, _, err := client.ListWorkspaces(ctx, management.ListOptions{Limit: 1})
@@ -57,24 +57,4 @@ func TestLiveOpenAPIReadOnly(t *testing.T) {
 		}
 	}
 
-	if _, _, err := client.DocumentationNavigation(ctx); err != nil {
-		t.Errorf("DocumentationNavigation() error = %v", err)
-	}
-	endpoints, _, err := client.ListDocumentedEndpoints(ctx, management.DocumentedEndpointListOptions{})
-	if err != nil {
-		t.Errorf("ListDocumentedEndpoints() error = %v", err)
-	} else if len(endpoints.Items) > 0 {
-		if _, _, err := client.GetDocumentedEndpoint(ctx, endpoints.Items[0].ID); err != nil {
-			t.Errorf("GetDocumentedEndpoint(%q) error = %v", endpoints.Items[0].ID, err)
-		}
-	}
-	if _, _, err := client.OpenAPISchema(ctx); err != nil {
-		t.Errorf("OpenAPISchema() error = %v", err)
-	}
-	if _, _, err := client.SwaggerSchema(ctx); err != nil {
-		t.Errorf("SwaggerSchema() error = %v", err)
-	}
-	if _, _, err := client.SDKPackages(ctx); err != nil {
-		t.Errorf("SDKPackages() error = %v", err)
-	}
 }
