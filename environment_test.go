@@ -61,7 +61,7 @@ func TestWithEnvironment(t *testing.T) {
 			name:        "oauth staging",
 			baseURL:     owlvigil.DefaultOAuthBaseURL,
 			environment: owlvigil.EnvironmentStaging,
-			want:        "https://openstaging.owlvigil.com",
+			want:        "https://stagingapi.owlvigil.com",
 		},
 		{
 			name:        "oauth local",

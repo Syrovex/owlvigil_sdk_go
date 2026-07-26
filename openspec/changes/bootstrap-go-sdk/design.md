@@ -6,7 +6,7 @@ The SDK is an HTTP client library. It must not connect directly to OwlVigil data
 
 The public API surface has two distinct domains:
 
-- Gateway model calls use `https://api.owlvigil.com` with Gateway key authentication.
+- Gateway model calls use `https://gateway.owlvigil.com` with Gateway key authentication.
 - Dashboard and Open API management workflows use `https://open.owlvigil.com` with OAuth2.0 user access tokens.
 
 The SDK should expose simple hand-written clients first, with room to generate lower-level request/response types from OpenAPI once the service contract stabilizes.
@@ -50,7 +50,7 @@ The SDK should expose simple hand-written clients first, with room to generate l
 
 3. **Two top-level clients**
 
-   The SDK will expose `GatewayClient` and `ManagementClient`. `GatewayClient` targets `https://api.owlvigil.com`; `ManagementClient` targets `https://open.owlvigil.com/open/v1`.
+   The SDK will expose `GatewayClient` and `ManagementClient`. `GatewayClient` targets `https://gateway.owlvigil.com`; `ManagementClient` targets `https://open.owlvigil.com/open/v1`.
 
    Alternative considered: one client with all methods. Rejected because Gateway and Management use different domains, authentication methods, and customer mental models.
 
@@ -196,7 +196,7 @@ The SDK should expose simple hand-written clients first, with room to generate l
 
 - Public API changes after early customers adopt the SDK -> Keep the initial surface small, document beta status if needed, and use semantic versioning.
 - Drift between SDK types and service responses -> Add contract tests with HTTP fixtures and later consider OpenAPI-generated low-level types.
-- Confusion between `api.owlvigil.com` and `open.owlvigil.com` -> Keep separate clients, defaults, examples, and error messages.
+- Confusion between `gateway.owlvigil.com` and `open.owlvigil.com` -> Keep separate clients, defaults, examples, and error messages.
 - Accidental coupling to backend internals -> Add tests or dependency checks confirming the SDK imports no dashboard/backend modules and no database drivers.
 - Streaming APIs can leak resources if not closed -> Document `defer stream.Close()` and enforce close behavior in tests.
 - Secrets can leak through logs -> Redact credentials before formatting SDK errors and include tests for redaction.

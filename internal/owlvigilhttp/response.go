@@ -22,6 +22,14 @@ type rawEnvelope struct {
 	Data      json.RawMessage `json:"data"`
 }
 
+type rawOpenAIErrorEnvelope struct {
+	Error struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+		Type    string `json:"type"`
+	} `json:"error"`
+}
+
 // DecodeResponse decodes an API response into out.
 func DecodeResponse(resp *http.Response, out any, secrets ...string) (*owlvigil.ResponseMeta, error) {
 	defer resp.Body.Close()
@@ -30,7 +38,12 @@ func DecodeResponse(resp *http.Response, out any, secrets ...string) (*owlvigil.
 		return nil, err
 	}
 
-	meta := &owlvigil.ResponseMeta{RequestID: resp.Header.Get("X-Request-Id")}
+	requestID := resp.Header.Get("OW-Request-Id")
+	if requestID == "" {
+		// Retain compatibility with pre-facade services that used the X prefix.
+		requestID = resp.Header.Get("X-Request-Id")
+	}
+	meta := &owlvigil.ResponseMeta{RequestID: requestID}
 	var env rawEnvelope
 	hasEnvelope := json.Unmarshal(body, &env) == nil && (env.RequestID != "" || env.Code != "" || env.Message != "")
 	if hasEnvelope {
@@ -44,6 +57,16 @@ func DecodeResponse(resp *http.Response, out any, secrets ...string) (*owlvigil.
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		msg := env.Message
 		code := env.Code
+		if !hasEnvelope {
+			var openAIError rawOpenAIErrorEnvelope
+			if json.Unmarshal(body, &openAIError) == nil {
+				msg = openAIError.Error.Message
+				code = openAIError.Error.Code
+				if code == "" {
+					code = openAIError.Error.Type
+				}
+			}
+		}
 		if msg == "" {
 			msg = http.StatusText(resp.StatusCode)
 		}

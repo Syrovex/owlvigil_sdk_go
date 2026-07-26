@@ -8,7 +8,7 @@ for {
     page, _, err := client.ListGatewayKeys(ctx, management.ListOptions{
         Cursor: cursor,
         Limit:  100,
-    }, "")
+    }, "", owlvigil.WithWorkspaceID(workspaceID))
     if err != nil {
         return err
     }
@@ -24,7 +24,11 @@ for {
 }
 ```
 
-Endpoint-specific filters can be combined with common pagination. For example, `ListRequestLogs` accepts a Gateway key filter in addition to `ListOptions`.
+Endpoint-specific typed options expose the current Open API filters:
+`ListRoutesWithFilters`, `ListMembersWithFilters`,
+`ListWorkspaceActivityWithFilters`, `ListOrdersWithFilters`, and
+`ListTopupsWithFilters`. Do not send undeclared filters: the Open API rejects
+unknown query parameters.
 
 Set `Limit` only when you want to override the service default; the SDK omits
 zero or negative limits. Treat `NextCursor` as opaque: persist and send it back

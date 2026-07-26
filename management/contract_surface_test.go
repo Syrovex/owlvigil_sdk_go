@@ -9,9 +9,9 @@ import (
 
 func TestClient_ExposesOnlyPublishedOpenAPIManagementMethods(t *testing.T) {
 	const (
-		publishedOperations = 130
-		convenienceMethods  = 1 // CreatePaymentMethodSetupIntentForWorkspace
-		clientMethods       = 1 // BaseURL
+		publishedOperations = 141
+		convenienceMethods  = 34 // typed filters, workspace helpers, and response-preserving action variants
+		clientMethods       = 1  // BaseURL
 	)
 
 	want := publishedOperations + convenienceMethods + clientMethods

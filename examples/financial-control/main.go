@@ -33,8 +33,8 @@ func main() {
 		log.Fatalf("Failed to get financial governance: %v", err)
 	}
 	if config.Thresholds != nil {
-		fmt.Printf("Warning threshold: %d%%\n", config.Thresholds.WarningPercent)
-		fmt.Printf("Critical threshold: %d%%\n", config.Thresholds.CriticalPercent)
+		fmt.Printf("Warning threshold: %.1f%%\n", config.Thresholds.WarningPercent)
+		fmt.Printf("Critical threshold: %.1f%%\n", config.Thresholds.CriticalPercent)
 		fmt.Printf("Exceeded action: %s\n", config.Thresholds.ExceededAction)
 	}
 
@@ -44,11 +44,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to get budget caps: %v", err)
 	}
-	if budgets.Workspace != nil {
+	if budgets.WorkspaceCap.ScopeType != "" {
 		fmt.Printf("Workspace budget: %.2f %s (used: %.2f)\n",
-			budgets.Workspace.Limit,
-			budgets.Workspace.Currency,
-			budgets.Workspace.Used)
+			budgets.WorkspaceCap.MonthlyAmount,
+			budgets.Currency,
+			budgets.WorkspaceCap.CurrentSpend)
 	}
 
 	// Example 3: Update user spending limit
@@ -70,9 +70,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to get spend summary: %v", err)
 	}
-	if summary.Workspace != nil {
-		fmt.Printf("Total workspace spend: %.2f %s\n",
-			summary.Workspace.Spent,
-			summary.Workspace.Currency)
+	if summary.WorkspaceSpend.ScopeType != "" {
+		fmt.Printf("Total workspace spend: %.2f (%s)\n",
+			summary.WorkspaceSpend.Spend,
+			summary.CurrentPeriod)
 	}
 }

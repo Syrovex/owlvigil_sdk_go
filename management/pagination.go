@@ -19,9 +19,11 @@ type PageInfo struct {
 
 // ListResponse contains typed list items and pagination metadata.
 type ListResponse[T any] struct {
-	Items    []T               `json:"items"`
-	Groups   []PermissionGroup `json:"groups,omitempty"`
-	PageInfo PageInfo          `json:"page_info"`
+	Items       []T               `json:"items"`
+	Groups      []PermissionGroup `json:"groups,omitempty"`
+	InviteRoles []T               `json:"invite_roles,omitempty"`
+	EditRoles   []T               `json:"edit_roles,omitempty"`
+	PageInfo    PageInfo          `json:"page_info"`
 }
 
 func (r *ListResponse[T]) UnmarshalJSON(data []byte) error {

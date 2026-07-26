@@ -104,8 +104,9 @@ fmt.Printf("Session status: %s\n", session.Status)
 ```go
 // Step 1: Create payment intent
 intent, _, err := client.CreateSubscriptionInApp(ctx, &management.CreateSubscriptionInAppRequest{
-    PlanID:   "pro",
-    Interval: "monthly",
+    PlanID:    "pro",
+    Interval:  "monthly",
+    ReturnURL: "https://yourapp.com/billing",
 })
 if err != nil {
     log.Fatalf("Failed to create payment: %v", err)
@@ -116,7 +117,8 @@ if err != nil {
 
 // Step 3: Confirm subscription after 3DS
 subscription, _, err := client.ConfirmSubscriptionInApp(ctx, &management.ConfirmSubscriptionInAppRequest{
-    PaymentIntentID: intent.PaymentIntentID,
+    PlanID:               "pro",
+    StripeSubscriptionID: intent.StripeSubscriptionID,
 })
 if err != nil {
     log.Fatalf("Failed to confirm: %v", err)
@@ -198,9 +200,10 @@ for _, plan := range plans.Items {
 
 ```go
 checkout, _, err := client.CreateTopupCheckout(ctx, &management.CreateTopupCheckoutRequest{
-    Amount:     100.0,
-    SuccessURL: "https://yourapp.com/success",
-    CancelURL:  "https://yourapp.com/cancel",
+    WorkspaceID: workspaceID,
+    Amount:      100.0,
+    SuccessURL:  "https://yourapp.com/success",
+    CancelURL:   "https://yourapp.com/cancel",
 })
 if err != nil {
     log.Fatalf("Failed to create checkout: %v", err)
@@ -215,7 +218,9 @@ fmt.Printf("Redirect to: %s\n", checkout.CheckoutURL)
 ```go
 // Step 1: Create payment intent
 intent, _, err := client.CreateTopupInApp(ctx, &management.CreateTopupInAppRequest{
-    Amount: 100.0,
+    WorkspaceID: workspaceID,
+    Amount:      100.0,
+    ReturnURL:   "https://yourapp.com/billing",
 })
 if err != nil {
     log.Fatalf("Failed to create payment: %v", err)
@@ -226,6 +231,7 @@ if err != nil {
 // Step 3: Confirm top-up
 topup, _, err := client.ConfirmTopupInApp(ctx, &management.ConfirmTopupInAppRequest{
     PaymentIntentID: intent.PaymentIntentID,
+    ClientSecret:    intent.ClientSecret,
 })
 if err != nil {
     log.Fatalf("Failed to confirm: %v", err)
@@ -253,7 +259,7 @@ for _, topup := range topups.Items {
 ### List Payment Methods
 
 ```go
-methods, _, err := client.ListPaymentMethods(ctx, management.ListOptions{})
+methods, _, err := client.ListPaymentMethodsForWorkspace(ctx, workspaceID)
 if err != nil {
     log.Fatalf("Failed to list payment methods: %v", err)
 }
@@ -272,7 +278,7 @@ for _, method := range methods.Items {
 
 ```go
 // Step 1: Create SetupIntent
-setupIntent, _, err := client.CreatePaymentMethodSetupIntent(ctx)
+setupIntent, _, err := client.CreatePaymentMethodSetupIntentForWorkspace(ctx, workspaceID)
 if err != nil {
     log.Fatalf("Failed to create setup intent: %v", err)
 }
@@ -318,7 +324,7 @@ fmt.Println("Payment method deleted")
 ### Get Billing Overview
 
 ```go
-overview, _, err := client.GetBillingOverview(ctx)
+overview, _, err := client.GetBillingOverviewForWorkspace(ctx, workspaceID)
 if err != nil {
     log.Fatalf("Failed to get overview: %v", err)
 }
@@ -364,7 +370,11 @@ fmt.Printf("Billing details updated for: %s\n", updated.CompanyName)
 ### List Invoices
 
 ```go
-invoices, _, err := client.ListInvoices(ctx, management.ListOptions{Limit: 10})
+invoices, _, err := client.ListInvoicesForWorkspace(
+    ctx,
+    workspaceID,
+    management.ListOptions{Limit: 10},
+)
 if err != nil {
     log.Fatalf("Failed to list invoices: %v", err)
 }
@@ -377,7 +387,7 @@ for _, invoice := range invoices.Items {
 ### Get Invoice Details
 
 ```go
-invoice, _, err := client.GetInvoice(ctx, "inv_xxxxx")
+invoice, _, err := client.GetInvoiceForWorkspace(ctx, workspaceID, "inv_xxxxx")
 if err != nil {
     log.Fatalf("Failed to get invoice: %v", err)
 }
@@ -397,7 +407,10 @@ if invoice.DueDate != "" {
 ### List Orders
 
 ```go
-orders, _, err := client.ListOrders(ctx, management.ListOptions{}, "subscription")
+orders, _, err := client.ListOrdersWithFilters(ctx, management.OrderListOptions{
+    OrderType: "subscription",
+    Status:    "paid",
+})
 if err != nil {
     log.Fatalf("Failed to list orders: %v", err)
 }
@@ -458,7 +471,7 @@ Always verify webhook signatures and handle subscription events:
 ### 2. Check Balance Before Operations
 
 ```go
-balance, _, err := client.GetBalance(ctx)
+balance, _, err := client.GetBalanceForWorkspace(ctx, workspaceID)
 if err != nil {
     return err
 }
@@ -529,6 +542,7 @@ func main() {
     client := management.NewClient(
         owlvigil.WithAPIKey(os.Getenv("OWLVIGIL_API_KEY")),
     )
+    workspaceID := int64(1) // Select an authorized ID with ListWorkspaces.
 
     // List available plans
     plans, _, err := client.ListPlans(ctx, management.ListOptions{})
@@ -550,14 +564,14 @@ func main() {
     }
 
     // Check balance
-    balance, _, err := client.GetBalance(ctx)
+    balance, _, err := client.GetBalanceForWorkspace(ctx, workspaceID)
     if err != nil {
         log.Fatalf("Failed to get balance: %v", err)
     }
     fmt.Printf("\nBalance: $%.2f %s\n", balance.Amount, balance.Currency)
 
     // List payment methods
-    methods, _, err := client.ListPaymentMethods(ctx, management.ListOptions{})
+    methods, _, err := client.ListPaymentMethodsForWorkspace(ctx, workspaceID)
     if err != nil {
         log.Fatalf("Failed to list payment methods: %v", err)
     }

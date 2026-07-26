@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -141,7 +142,7 @@ func convertToStagingURL(prodURL string) string {
 		// Fallback to string replacement if parsing fails
 		url := strings.Replace(prodURL, "gateway.owlvigil.com", "staginggateway.owlvigil.com", 1)
 		url = strings.Replace(url, "api.owlvigil.com", "stagingapi.owlvigil.com", 1)
-		url = strings.Replace(url, "open.owlvigil.com", "openstaging.owlvigil.com", 1)
+		url = strings.Replace(url, "open.owlvigil.com", "stagingapi.owlvigil.com", 1)
 		return url
 	}
 
@@ -152,7 +153,7 @@ func convertToStagingURL(prodURL string) string {
 	case "api.owlvigil.com":
 		u.Host = "stagingapi.owlvigil.com"
 	case "open.owlvigil.com":
-		u.Host = "openstaging.owlvigil.com"
+		u.Host = "stagingapi.owlvigil.com"
 	}
 	return u.String()
 }
@@ -186,10 +187,10 @@ func convertToLocalURL(prodURL string) string {
 	case "gateway.owlvigil.com", "staginggateway.owlvigil.com":
 		// Gateway API
 		return "http://localhost:8080"
-	case "api.owlvigil.com", "stagingapi.owlvigil.com":
+	case "api.owlvigil.com":
 		// Management API
 		return "http://localhost:8081/v1"
-	case "open.owlvigil.com", "openstaging.owlvigil.com":
+	case "open.owlvigil.com", "stagingapi.owlvigil.com":
 		// Management/OAuth API
 		return "http://localhost:8081"
 	default:
@@ -310,4 +311,10 @@ func WithQueryParam(key, value string) RequestOption {
 		}
 		c.Query[key] = value
 	}
+}
+
+// WithWorkspaceID selects the workspace for Management routes whose Open API
+// contract requires a workspace_id query parameter.
+func WithWorkspaceID(workspaceID int64) RequestOption {
+	return WithQueryParam("workspace_id", strconv.FormatInt(workspaceID, 10))
 }

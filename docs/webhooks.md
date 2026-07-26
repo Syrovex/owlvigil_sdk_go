@@ -39,11 +39,21 @@ Use `CreateWebhookEndpoint`, `GetWebhookEndpoint`, `UpdateWebhookEndpoint`,
 `DeleteWebhookEndpoint`, `EnableWebhookEndpoint`, `DisableWebhookEndpoint`,
 and `RotateWebhookSecret` to configure where OwlVigil sends events. Endpoint
 writes are mutations; use an idempotency key and store a rotated secret only in
-a secret manager.
+a secret manager. Create carries `workspace_id` in its request body. Endpoint
+list/detail/update/delete/enable/disable/rotate/test calls require
+`owlvigil.WithWorkspaceID(workspaceID)`.
 
 `ListWebhookEventTypes` lists selectable events. `ListWebhookEvents`,
 `GetWebhookEvent`, and `ListEndpointEvents` inspect delivery history.
+All event reads except `ListWebhookEventTypes` require
+`owlvigil.WithWorkspaceID(workspaceID)`. Retry and redeliver calls require the
+same option; bulk redelivery carries `workspace_id` in its request body.
 `TestWebhookEndpoint`, `RetryWebhookEvent`, `RedeliverWebhookEvent`, and
 `BulkRedeliverWebhookEvents` cause new deliveries, so run them only against a
 receiver that can safely process duplicates. Persist an event identifier or use
 an idempotent consumer to deduplicate retries.
+
+Use the corresponding `WithResult` variants when the updated endpoint,
+delivery event, bulk event list, or delete confirmation is needed. The
+compatibility methods still validate the published response shape before
+returning only metadata and an error.

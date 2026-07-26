@@ -68,5 +68,5 @@ go run main.go
 | Environment | Gateway API | Management API | OAuth API |
 |-------------|-------------|----------------|-----------|
 | Production  | `gateway.owlvigil.com` | `api.owlvigil.com/v1` | `open.owlvigil.com` |
-| Staging     | `staginggateway.owlvigil.com` | `stagingapi.owlvigil.com/v1` | `openstaging.owlvigil.com` |
+| Staging     | `staginggateway.owlvigil.com` | `stagingapi.owlvigil.com/v1` | `stagingapi.owlvigil.com` |
 | Local       | `localhost:8080` | `localhost:8081/v1` | `localhost:8081` |

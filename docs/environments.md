@@ -23,7 +23,7 @@ client := management.NewClient(
 ```
 - Gateway: `https://staginggateway.owlvigil.com`
 - Management: `https://stagingapi.owlvigil.com/v1`
-- OAuth: `https://openstaging.owlvigil.com`
+- OAuth: `https://stagingapi.owlvigil.com`
 
 ### Local Development
 ```go

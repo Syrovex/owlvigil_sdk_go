@@ -19,7 +19,7 @@ The public docs SHALL clearly distinguish Gateway and Management domains and aut
 
 #### Scenario: Customer chooses a base URL
 - **WHEN** a customer reads authentication documentation
-- **THEN** they MUST understand that Gateway calls use `https://api.owlvigil.com` with Gateway keys and Management calls use `https://open.owlvigil.com/open/v1` with OAuth2.0 user access tokens.
+- **THEN** they MUST understand that Gateway calls use `https://gateway.owlvigil.com` with Gateway keys and Management calls use `https://open.owlvigil.com/open/v1` with OAuth2.0 user access tokens.
 
 ### Requirement: Gateway calling guide
 The public docs SHALL include copy-pasteable examples for Gateway model calls.

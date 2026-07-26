@@ -5,20 +5,36 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
 )
 
+// DeleteResponse confirms that a resource was deleted.
+type DeleteResponse struct {
+	Deleted bool `json:"deleted"`
+}
+
 // Model describes a gateway model.
 type Model struct {
-	ID            string             `json:"id"`
-	ModelID       string             `json:"model_id,omitempty"`
-	Name          string             `json:"name"`
-	Provider      string             `json:"provider"`
-	Developer     string             `json:"developer,omitempty"`
+	ID         string          `json:"id"`
+	ModelID    string          `json:"model_id,omitempty"`
+	Developer  string          `json:"developer,omitempty"`
+	Type       string          `json:"type,omitempty"`
+	Name       string          `json:"name"`
+	Icon       string          `json:"icon,omitempty"`
+	Group      string          `json:"group,omitempty"`
+	Status     string          `json:"status"`
+	RouteCount int             `json:"route_count,omitempty"`
+	CreatedAt  string          `json:"created_at,omitempty"`
+	UpdatedAt  string          `json:"updated_at,omitempty"`
+	ModelCard  json.RawMessage `json:"model_card,omitempty"`
+	Routes     []Route         `json:"routes,omitempty"`
+
+	// Legacy fields retained for source compatibility.
+	Provider      string             `json:"provider,omitempty"`
 	Capabilities  []string           `json:"capabilities,omitempty"`
 	ContextWindow int                `json:"context_window,omitempty"`
-	Status        string             `json:"status"`
 	Pricing       map[string]float64 `json:"pricing,omitempty"`
 }
 
@@ -44,13 +60,26 @@ func (m *Model) UnmarshalJSON(data []byte) error {
 
 // Route describes a model routing rule.
 type Route struct {
-	ID              string   `json:"id"`
-	RouteID         string   `json:"route_id,omitempty"`
-	ModelID         string   `json:"model_id"`
-	Model           string   `json:"model,omitempty"`
+	ID               string          `json:"id"`
+	RouteID          string          `json:"route_id,omitempty"`
+	WorkspaceID      int64           `json:"workspace_id,omitempty"`
+	Model            string          `json:"model,omitempty"`
+	ActualModel      string          `json:"actual_model,omitempty"`
+	MatchSource      string          `json:"match_source,omitempty"`
+	ChannelID        int             `json:"channel_id,omitempty"`
+	ChannelName      string          `json:"channel_name,omitempty"`
+	ChannelType      string          `json:"channel_type,omitempty"`
+	ChannelStatus    string          `json:"channel_status,omitempty"`
+	ProviderSource   string          `json:"provider_source,omitempty"`
+	ProviderPlatform *string         `json:"provider_platform,omitempty"`
+	Price            json.RawMessage `json:"price,omitempty"`
+	PriceReferenceID string          `json:"price_reference_id,omitempty"`
+
+	// Legacy fields retained for source compatibility.
+	ModelID         string   `json:"model_id,omitempty"`
 	Providers       []string `json:"providers,omitempty"`
-	Priority        int      `json:"priority"`
-	FallbackEnabled bool     `json:"fallback_enabled"`
+	Priority        int      `json:"priority,omitempty"`
+	FallbackEnabled bool     `json:"fallback_enabled,omitempty"`
 }
 
 func (r *Route) UnmarshalJSON(data []byte) error {
@@ -75,7 +104,7 @@ func (r *Route) UnmarshalJSON(data []byte) error {
 
 // PreviewRouteRequest previews model routing.
 type PreviewRouteRequest struct {
-	WorkspaceID int64          `json:"workspace_id,omitempty"`
+	WorkspaceID int64          `json:"workspace_id"`
 	Model       string         `json:"model"`
 	KeyID       int64          `json:"key_id,omitempty"`
 	Metadata    map[string]any `json:"metadata,omitempty"`
@@ -83,9 +112,48 @@ type PreviewRouteRequest struct {
 
 // PreviewRouteResponse describes routing preview result.
 type PreviewRouteResponse struct {
-	Provider  string   `json:"provider"`
+	WorkspaceID     int64          `json:"workspace_id,omitempty"`
+	Model           string         `json:"model,omitempty"`
+	CandidateCount  int            `json:"candidate_count,omitempty"`
+	Candidates      []Route        `json:"candidates,omitempty"`
+	PreviewMetadata map[string]any `json:"preview_metadata,omitempty"`
+
+	// Legacy fields retained for source compatibility.
+	Provider  string   `json:"provider,omitempty"`
 	Channel   string   `json:"channel,omitempty"`
 	Fallbacks []string `json:"fallbacks,omitempty"`
+}
+
+// RouteListOptions filters and paginates gateway route candidates.
+type RouteListOptions struct {
+	Cursor string
+	Limit  int
+	KeyID  int64
+	Model  string
+}
+
+func (o RouteListOptions) values() url.Values {
+	q := ListOptions{Cursor: o.Cursor, Limit: o.Limit}.values()
+	if o.KeyID > 0 {
+		q.Set("key_id", strconv.FormatInt(o.KeyID, 10))
+	}
+	addFilter(q, "model", o.Model)
+	return q
+}
+
+// RouteDetailOptions narrows a gateway route lookup.
+type RouteDetailOptions struct {
+	KeyID int64
+	Model string
+}
+
+func (o RouteDetailOptions) values() url.Values {
+	q := url.Values{}
+	if o.KeyID > 0 {
+		q.Set("key_id", strconv.FormatInt(o.KeyID, 10))
+	}
+	addFilter(q, "model", o.Model)
+	return q
 }
 
 // ListModels lists available gateway models.
@@ -110,6 +178,16 @@ func (c *Client) GetModel(ctx context.Context, modelID string, reqOpts ...owlvig
 
 // ListRoutes lists model routing rules.
 func (c *Client) ListRoutes(ctx context.Context, opts ListOptions, reqOpts ...owlvigil.RequestOption) (*ListResponse[Route], *owlvigil.ResponseMeta, error) {
+	return c.ListRoutesWithFilters(
+		ctx,
+		RouteListOptions{Cursor: opts.Cursor, Limit: opts.Limit},
+		reqOpts...,
+	)
+}
+
+// ListRoutesWithFilters lists model routing candidates using every filter
+// published by the current Open API.
+func (c *Client) ListRoutesWithFilters(ctx context.Context, opts RouteListOptions, reqOpts ...owlvigil.RequestOption) (*ListResponse[Route], *owlvigil.ResponseMeta, error) {
 	var out ListResponse[Route]
 	meta, err := c.http.Do(ctx, http.MethodGet, "/gateway/routes", opts.values(), nil, &out, reqOpts...)
 	if err != nil {
@@ -120,8 +198,14 @@ func (c *Client) ListRoutes(ctx context.Context, opts ListOptions, reqOpts ...ow
 
 // GetRoute retrieves a gateway route by ID.
 func (c *Client) GetRoute(ctx context.Context, routeID string, reqOpts ...owlvigil.RequestOption) (*Route, *owlvigil.ResponseMeta, error) {
+	return c.GetRouteWithFilters(ctx, routeID, RouteDetailOptions{}, reqOpts...)
+}
+
+// GetRouteWithFilters retrieves a gateway route using the optional key and
+// model selectors published by the current Open API.
+func (c *Client) GetRouteWithFilters(ctx context.Context, routeID string, opts RouteDetailOptions, reqOpts ...owlvigil.RequestOption) (*Route, *owlvigil.ResponseMeta, error) {
 	var out Route
-	meta, err := c.http.Do(ctx, http.MethodGet, "/gateway/routes/"+url.PathEscape(routeID), nil, nil, &out, reqOpts...)
+	meta, err := c.http.Do(ctx, http.MethodGet, "/gateway/routes/"+url.PathEscape(routeID), opts.values(), nil, &out, reqOpts...)
 	if err != nil {
 		return nil, meta, err
 	}

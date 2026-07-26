@@ -90,7 +90,7 @@ func TestOpenAPIContractCoverageTypesMarshalProviderRequests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := string(body), `{"api_key":"upstream-key"}`; got != want {
+	if got, want := string(body), `{"workspace_id":0,"api_key":"upstream-key"}`; got != want {
 		t.Errorf("json.Marshal(UpdateProviderRequest) = %s, want %s", got, want)
 	}
 }

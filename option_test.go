@@ -98,6 +98,7 @@ func TestRequestOptions(t *testing.T) {
 	owlvigil.WithIdempotencyKey("idem_1")(&cfg)
 	owlvigil.WithHeader("X-Test", "value")(&cfg)
 	owlvigil.WithQueryParam("expand", "usage")(&cfg)
+	owlvigil.WithWorkspaceID(42)(&cfg)
 
 	if cfg.IdempotencyKey != "idem_1" {
 		t.Fatalf("IdempotencyKey = %q", cfg.IdempotencyKey)
@@ -107,5 +108,8 @@ func TestRequestOptions(t *testing.T) {
 	}
 	if got := cfg.Query["expand"]; got != "usage" {
 		t.Fatalf("query = %q", got)
+	}
+	if got := cfg.Query["workspace_id"]; got != "42" {
+		t.Fatalf("workspace_id query = %q", got)
 	}
 }

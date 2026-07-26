@@ -54,7 +54,12 @@ fmt.Println(meta.RequestID, resp.ID)
 ```go
 client := management.NewClient(owlvigil.WithAPIKey(os.Getenv("OWLVIGIL_API_KEY")))
 
-keys, _, err := client.ListGatewayKeys(ctx, management.ListOptions{Limit: 20}, "")
+keys, _, err := client.ListGatewayKeys(
+    ctx,
+    management.ListOptions{Limit: 20},
+    "",
+    owlvigil.WithWorkspaceID(workspaceID),
+)
 if err != nil {
     return err
 }
@@ -101,6 +106,7 @@ url, err := auth.AuthorizationURL(oauth2.AuthCodeOptions{
 
 ```bash
 sh scripts/check-docs.sh
+sh scripts/check-openapi-alignment.sh ../owlvigil_openapi
 go test ./...
 ```
 

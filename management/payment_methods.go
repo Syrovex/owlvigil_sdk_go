@@ -2,23 +2,54 @@ package management
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
 )
 
 // PaymentMethod describes a saved payment method.
 type PaymentMethod struct {
-	ID        string                 `json:"id"`
-	Type      string                 `json:"type"`
-	Brand     string                 `json:"brand,omitempty"`
-	Last4     string                 `json:"last4,omitempty"`
-	ExpMonth  int                    `json:"exp_month,omitempty"`
-	ExpYear   int                    `json:"exp_year,omitempty"`
-	IsDefault bool                   `json:"is_default"`
-	CreatedAt string                 `json:"created_at,omitempty"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	ID           string         `json:"id"`
+	Type         string         `json:"type"`
+	Brand        string         `json:"brand,omitempty"`
+	Last4        string         `json:"last4,omitempty"`
+	ExpiryMonth  int            `json:"expiry_month,omitempty"`
+	ExpiryYear   int            `json:"expiry_year,omitempty"`
+	IsDefault    bool           `json:"is_default"`
+	CreatedAt    string         `json:"created_at,omitempty"`
+	BillingEmail string         `json:"billing_email,omitempty"`
+	Metadata     map[string]any `json:"metadata,omitempty"`
+
+	// ExpMonth and ExpYear are pre-refactor aliases.
+	ExpMonth int `json:"-"`
+	ExpYear  int `json:"-"`
+}
+
+// UnmarshalJSON decodes the current expiry field names and synchronizes the
+// pre-refactor aliases.
+func (p *PaymentMethod) UnmarshalJSON(data []byte) error {
+	type alias PaymentMethod
+	var raw struct {
+		alias
+		LegacyExpMonth int `json:"exp_month,omitempty"`
+		LegacyExpYear  int `json:"exp_year,omitempty"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	*p = PaymentMethod(raw.alias)
+	if p.ExpiryMonth == 0 {
+		p.ExpiryMonth = raw.LegacyExpMonth
+	}
+	if p.ExpiryYear == 0 {
+		p.ExpiryYear = raw.LegacyExpYear
+	}
+	p.ExpMonth = p.ExpiryMonth
+	p.ExpYear = p.ExpiryYear
+	return nil
 }
 
 // SetupIntent describes a Stripe SetupIntent for adding payment methods.
@@ -42,7 +73,20 @@ type SavePaymentMethodRequest struct {
 // ListPaymentMethods lists saved payment methods.
 func (c *Client) ListPaymentMethods(ctx context.Context, opts ListOptions, reqOpts ...owlvigil.RequestOption) (*ListResponse[PaymentMethod], *owlvigil.ResponseMeta, error) {
 	var out ListResponse[PaymentMethod]
-	meta, err := c.http.Do(ctx, http.MethodGet, "/billing/payment-methods", opts.values(), nil, &out, reqOpts...)
+	// Only workspace_id is declared; callers may supply it as a request option.
+	_ = opts
+	meta, err := c.http.Do(ctx, http.MethodGet, "/billing/payment-methods", nil, nil, &out, reqOpts...)
+	if err != nil {
+		return nil, meta, err
+	}
+	return &out, meta, nil
+}
+
+// ListPaymentMethodsForWorkspace lists saved payment methods for a workspace.
+func (c *Client) ListPaymentMethodsForWorkspace(ctx context.Context, workspaceID int64, reqOpts ...owlvigil.RequestOption) (*ListResponse[PaymentMethod], *owlvigil.ResponseMeta, error) {
+	var out ListResponse[PaymentMethod]
+	query := url.Values{"workspace_id": {strconv.FormatInt(workspaceID, 10)}}
+	meta, err := c.http.Do(ctx, http.MethodGet, "/billing/payment-methods", query, nil, &out, reqOpts...)
 	if err != nil {
 		return nil, meta, err
 	}
@@ -94,5 +138,16 @@ func (c *Client) SetDefaultPaymentMethod(ctx context.Context, paymentMethodID st
 
 // DeletePaymentMethod removes a saved payment method.
 func (c *Client) DeletePaymentMethod(ctx context.Context, paymentMethodID string, reqOpts ...owlvigil.RequestOption) (*owlvigil.ResponseMeta, error) {
-	return c.http.Do(ctx, http.MethodDelete, "/billing/payment-methods/"+url.PathEscape(paymentMethodID), nil, nil, nil, reqOpts...)
+	_, meta, err := c.DeletePaymentMethodWithResult(ctx, paymentMethodID, reqOpts...)
+	return meta, err
+}
+
+// DeletePaymentMethodWithResult removes a payment method and returns confirmation.
+func (c *Client) DeletePaymentMethodWithResult(ctx context.Context, paymentMethodID string, reqOpts ...owlvigil.RequestOption) (*DeleteResponse, *owlvigil.ResponseMeta, error) {
+	var out DeleteResponse
+	meta, err := c.http.Do(ctx, http.MethodDelete, "/billing/payment-methods/"+url.PathEscape(paymentMethodID), nil, nil, &out, reqOpts...)
+	if err != nil {
+		return nil, meta, err
+	}
+	return &out, meta, nil
 }

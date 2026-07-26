@@ -226,7 +226,7 @@ func TestFinancialControlEndpoints(t *testing.T) {
 	}
 
 	// Test UpdateFinancialThresholds
-	warning := 75
+	warning := 75.0
 	_, _, err = client.UpdateFinancialThresholds(ctx, 1, &management.UpdateThresholdsRequest{
 		WarningPercent: &warning,
 	})

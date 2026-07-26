@@ -9,7 +9,9 @@ Gateway invocation itself still uses `OWLVIGIL_GATEWAY_KEY`; see
 
 Use `ListModels` and `GetModel` to present available models. `ListRoutes` and
 `GetRoute` inspect configured routing rules. All four are read-only and list
-methods use `management.ListOptions`.
+methods use `management.ListOptions`. All four require
+`owlvigil.WithWorkspaceID(workspaceID)`. Use `ListRoutesWithFilters` or
+`GetRouteWithFilters` when selecting a key or model explicitly.
 
 Before changing a route, use `PreviewRoute` with a
 `management.PreviewRouteRequest`. A preview evaluates a proposed route without
@@ -46,13 +48,19 @@ first.
 `ListGatewayKeys`, `GetGatewayKey`, `CreateGatewayKey`, `UpdateGatewayKey`,
 `RotateGatewayKey`, `EnableGatewayKey`, `DisableGatewayKey`, and
 `DeleteGatewayKey` manage credentials used by callers of the Gateway API.
+Except for create, these routes require
+`owlvigil.WithWorkspaceID(workspaceID)`; list also requires it.
 The key `Secret` is returned only when the service makes it visible. Store it
 once, then discard it from application memory and logs.
+The `WithResult` action variants return the updated key or delete
+confirmation while the original signatures retain compatibility.
 
 `GetGatewayPolicies` retrieves policy configuration for a key.
 `PreviewPolicyEffect` evaluates a proposed policy effect, and
 `UpdateGatewayPolicy` changes selected fields. Preview before every update and
-keep the returned request ID with the change record.
+keep the returned request ID with the change record. Reads and updates require
+`owlvigil.WithWorkspaceID(workspaceID)`; previews carry `workspace_id` in the
+request body.
 
 ## Safe rollout sequence
 

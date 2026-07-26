@@ -44,7 +44,7 @@ func run(ctx context.Context, client *management.Client, configuredWorkspaceID s
 		}
 	}
 
-	summary, _, err := client.GetUsageSummary(ctx, owlvigil.WithQueryParam("workspace_id", strconv.FormatInt(workspaceID, 10)))
+	summary, _, err := client.GetUsageSummary(ctx, owlvigil.WithWorkspaceID(workspaceID))
 	if err != nil {
 		return err
 	}

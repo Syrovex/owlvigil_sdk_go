@@ -2,6 +2,7 @@ package management
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 )
 
@@ -19,4 +20,16 @@ func stringFromJSON(raw json.RawMessage) string {
 		return n.String()
 	}
 	return ""
+}
+
+func int64PointerFromJSON(raw json.RawMessage) *int64 {
+	value := stringFromJSON(raw)
+	if value == "" {
+		return nil
+	}
+	parsed, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return nil
+	}
+	return &parsed
 }

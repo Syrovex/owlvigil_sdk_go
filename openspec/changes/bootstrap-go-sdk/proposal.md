@@ -5,7 +5,7 @@ OwlVigil needs a dedicated Go SDK so customers can integrate Gateway model calls
 ## What Changes
 
 - Bootstrap the `owlvigil-go` module as the official Go SDK project.
-- Add a Gateway client for model calls through `https://api.owlvigil.com`, authenticated by Gateway key.
+- Add a Gateway client for model calls through `https://gateway.owlvigil.com`, authenticated by Gateway key.
 - Add a Management client for Open API calls through `https://open.owlvigil.com/open/v1`, authenticated by OAuth2.0 user access token.
 - Add OAuth2.0 helpers for authorization URL generation, token exchange, token refresh, userinfo, and token revocation.
 - Add shared HTTP client behavior for base URLs, authentication, JSON encoding/decoding, request IDs, errors, retries, and context propagation.
@@ -21,7 +21,7 @@ OwlVigil needs a dedicated Go SDK so customers can integrate Gateway model calls
 ### New Capabilities
 
 - `sdk-core`: Shared Go SDK module, client configuration, HTTP transport, errors, responses, retries, and context-aware requests.
-- `gateway-client`: Gateway model invocation client for OpenAI-compatible and provider-compatible model endpoints on `api.owlvigil.com`.
+- `gateway-client`: Gateway model invocation client for OpenAI-compatible and provider-compatible model endpoints on `gateway.owlvigil.com`.
 - `management-client`: Open API management client for workspace, Gateway key, model, usage, logs, policy, webhook, and documentation metadata endpoints on `open.owlvigil.com`.
 - `oauth2-auth`: OAuth2.0 user authentication helpers for Dashboard and Open API management authorization.
 - `public-docs`: Customer-facing documentation, quickstarts, examples, reference pages, and troubleshooting guidance for SDK and API usage.

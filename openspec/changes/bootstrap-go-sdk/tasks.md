@@ -34,7 +34,7 @@
 
 ## 4. Gateway Client
 
-- [x] 4.1 Implement `GatewayClient` with default domain `https://api.owlvigil.com`.
+- [x] 4.1 Implement `GatewayClient` with default domain `https://gateway.owlvigil.com`.
 - [x] 4.2 Implement Gateway key authentication with `Authorization: Bearer ov_sk_xxx`.
 - [x] 4.3 Implement OpenAI-compatible chat completions for `POST /v1/chat/completions`.
 - [x] 4.4 Implement OpenAI-compatible responses for `POST /v1/responses`.

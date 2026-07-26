@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Realigned the Management SDK with all 141 routes in the refactored Open API.
+- Added missing workspace, overview, audit, payload-log, logging, provider
+  verification, and workspace lifecycle methods.
+- Removed query parameters rejected by the strict Open API contract.
+- Updated billing, financial, policy, observability, webhook, and account DTOs.
+- Added typed filter helpers, explicit nullable profile clears, Open API request
+  ID header support, and response-preserving action variants.
+- Added a 141-operation smoke use-case catalog and a cross-repository alignment
+  gate.
+
 ## v0.2.0 (2026-07-06)
 
 ### Added - Management API (99 new endpoints)
@@ -150,6 +164,6 @@
 ### Added
 
 - Bootstrap the standalone `github.com/Syrovex/owlvigil_sdk_go` SDK module.
-- Add Gateway client for `https://api.owlvigil.com` model calls with Gateway key authentication.
+- Add Gateway client for `https://gateway.owlvigil.com` model calls with Gateway key authentication.
 - Add Management client for `https://open.owlvigil.com/open/v1` workflows with OAuth2.0 access-token authentication.
 - Add OAuth2.0 helpers, streaming support, pagination helpers, webhook signature verification, examples, docs, and tests.

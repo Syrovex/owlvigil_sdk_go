@@ -2,6 +2,7 @@ package management
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -11,12 +12,34 @@ import (
 // Role describes a workspace role.
 type Role struct {
 	ID          int64    `json:"id"`
+	Key         string   `json:"key,omitempty"`
 	WorkspaceID int64    `json:"workspace_id"`
 	Name        string   `json:"name"`
 	Description string   `json:"description,omitempty"`
+	ScopeType   string   `json:"scope_type,omitempty"`
+	ScopeID     int64    `json:"scope_id,omitempty"`
+	BuiltIn     bool     `json:"built_in,omitempty"`
 	IsSystem    bool     `json:"is_system"`
-	Permissions []string `json:"permissions,omitempty"`
+	Permissions []string `json:"permissions"`
 	CreatedAt   string   `json:"created_at,omitempty"`
+	UpdatedAt   string   `json:"updated_at,omitempty"`
+}
+
+// UnmarshalJSON synchronizes built_in with the pre-refactor is_system alias.
+func (r *Role) UnmarshalJSON(data []byte) error {
+	type alias Role
+	var out alias
+	if err := json.Unmarshal(data, &out); err != nil {
+		return err
+	}
+	*r = Role(out)
+	if !r.BuiltIn {
+		r.BuiltIn = r.IsSystem
+	}
+	if !r.IsSystem {
+		r.IsSystem = r.BuiltIn
+	}
+	return nil
 }
 
 // Permission describes a permission.
@@ -30,6 +53,7 @@ type Permission struct {
 	ScopeType   string `json:"scope_type,omitempty"`
 	Default     bool   `json:"default,omitempty"`
 	Effective   bool   `json:"effective,omitempty"`
+	Override    string `json:"override,omitempty"`
 }
 
 // PermissionGroup describes a grouped set of permissions.
@@ -55,28 +79,50 @@ type MemberPermissions struct {
 
 // CreateRoleRequest creates a custom role.
 type CreateRoleRequest struct {
+	Key         string   `json:"key,omitempty"`
 	Name        string   `json:"name"`
 	Description string   `json:"description,omitempty"`
-	Permissions []string `json:"permissions,omitempty"`
+	Permissions []string `json:"permissions"`
 }
 
 // UpdateRoleRequest updates a role.
 type UpdateRoleRequest struct {
-	Name        *string  `json:"name,omitempty"`
-	Description *string  `json:"description,omitempty"`
-	Permissions []string `json:"permissions,omitempty"`
+	Name        *string   `json:"name,omitempty"`
+	Description *string   `json:"description,omitempty"`
+	Permissions *[]string `json:"permissions,omitempty"`
 }
 
 // UpdateMemberPermissionsRequest updates member permissions.
 type UpdateMemberPermissionsRequest struct {
-	Permissions []string `json:"permissions"`
+	PermissionMap map[string]bool `json:"-"`
+
+	// Permissions is retained as a compatibility shorthand that enables each listed permission.
+	Permissions []string `json:"-"`
+}
+
+// MarshalJSON emits the current permission override map.
+func (r UpdateMemberPermissionsRequest) MarshalJSON() ([]byte, error) {
+	permissions := r.PermissionMap
+	if permissions == nil {
+		permissions = make(map[string]bool, len(r.Permissions))
+		for _, permission := range r.Permissions {
+			permissions[permission] = true
+		}
+	}
+	return json.Marshal(struct {
+		Permissions map[string]bool `json:"permissions"`
+	}{
+		Permissions: permissions,
+	})
 }
 
 // ListRoles lists workspace roles.
 func (c *Client) ListRoles(ctx context.Context, workspaceID int64, opts ListOptions, reqOpts ...owlvigil.RequestOption) (*ListResponse[Role], *owlvigil.ResponseMeta, error) {
 	var out ListResponse[Role]
 	path := "/workspaces/" + strconv.FormatInt(workspaceID, 10) + "/roles"
-	meta, err := c.http.Do(ctx, http.MethodGet, path, opts.values(), nil, &out, reqOpts...)
+	// The current Open API declares no query parameters on this route.
+	_ = opts
+	meta, err := c.http.Do(ctx, http.MethodGet, path, nil, nil, &out, reqOpts...)
 	if err != nil {
 		return nil, meta, err
 	}
@@ -118,8 +164,19 @@ func (c *Client) UpdateRole(ctx context.Context, workspaceID, roleID int64, req 
 
 // DeleteRole deletes a custom role.
 func (c *Client) DeleteRole(ctx context.Context, workspaceID, roleID int64, reqOpts ...owlvigil.RequestOption) (*owlvigil.ResponseMeta, error) {
+	_, meta, err := c.DeleteRoleWithResult(ctx, workspaceID, roleID, reqOpts...)
+	return meta, err
+}
+
+// DeleteRoleWithResult deletes a custom role and returns confirmation.
+func (c *Client) DeleteRoleWithResult(ctx context.Context, workspaceID, roleID int64, reqOpts ...owlvigil.RequestOption) (*DeleteResponse, *owlvigil.ResponseMeta, error) {
 	path := "/workspaces/" + strconv.FormatInt(workspaceID, 10) + "/roles/" + strconv.FormatInt(roleID, 10)
-	return c.http.Do(ctx, http.MethodDelete, path, nil, nil, nil, reqOpts...)
+	var out DeleteResponse
+	meta, err := c.http.Do(ctx, http.MethodDelete, path, nil, nil, &out, reqOpts...)
+	if err != nil {
+		return nil, meta, err
+	}
+	return &out, meta, nil
 }
 
 // ListPermissions lists available permissions.

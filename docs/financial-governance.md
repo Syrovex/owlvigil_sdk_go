@@ -9,9 +9,11 @@ workflows.
 
 Read the current state with `GetFinancialGovernance`, `GetBudgetCaps`,
 `GetSpendingLimits`, `GetFinancialThresholds`, and `GetSpendSummary`. The
-spending-limits call is paginated. `GetQuotaSummary`, `GetQuotaUsage`,
-`GetUsageSummary`, `ListUsage`, and `GetBalance` provide complementary quota,
-usage, and balance evidence.
+spending-limits call is not paginated; use `GetSpendingLimitsWithFilters` for
+the published `team_id` and `user_id` filters. `GetQuotaSummary`,
+`GetQuotaUsage`, `GetUsageSummary`, `ListUsage`, and
+`GetBalanceForWorkspace` provide complementary quota, usage, and balance
+evidence. Gateway usage methods require `owlvigil.WithWorkspaceID(workspaceID)`.
 
 ```go
 governance, meta, err := client.GetFinancialGovernance(ctx, workspaceID)

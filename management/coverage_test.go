@@ -23,7 +23,7 @@ func TestRemainingManagementEndpoints(t *testing.T) {
 		"PUT /user/notification-preferences":  `{"budget_alerts":false,"billing_alerts":true,"report_emails":true,"marketing_emails":false}`,
 		"GET /users/me/invite-link":           `{"invite_code":"abc","invite_url":"https://example.com/i/abc","stats":{"total_invites":2,"accepted_invites":1,"pending_invites":1,"conversion_rate":0.5}}`,
 		"GET /users/me/invitation-stats":      `{"total_invites":2,"accepted_invites":1,"pending_invites":1,"conversion_rate":0.5}`,
-		"GET /users/me/invitations":           `{"items":[{"id":1,"email":"friend@example.com","status":"pending"}],"page_info":{}}`,
+		"GET /users/me/invitations":           `[{"id":1,"invite_code":"abc","inviter_user_id":10,"invited_email":"friend@example.com","status":"pending","created_at":"2026-07-08T00:00:00Z"}]`,
 		"POST /users/me/send-invitation":      `{}`,
 		"GET /gateway/models":                 `{"items":[{"id":123,"name":"GPT","developer":"openai","status":"active"}],"page_info":{}}`,
 		"GET /gateway/models/gpt-4o%2Fmini":   `{"model_id":"gpt-4o-mini","name":"GPT","developer":"openai","status":"active"}`,
@@ -35,8 +35,8 @@ func TestRemainingManagementEndpoints(t *testing.T) {
 		"GET /gateway/policies":               `{"workspace_id":1,"key_id":9,"model_policies":{"allowed":["gpt-4o-mini"]}}`,
 		"POST /gateway/policies/preview":      `{"allowed":true,"modified_by":["model_policies"]}`,
 		"GET /gateway/usage":                  `{"items":[{"id":"u_1","timestamp":"2026-07-08T00:00:00Z","model":"gpt-4o-mini","requests":1,"tokens":2,"cost":0.01}],"page_info":{}}`,
-		"GET /workspaces/1/quota-summary":     `{"workspace_id":1,"plan":"pro","items":[{"key":"tokens","used":2,"limit":100}]}`,
-		"GET /workspaces/1/quota-usage":       `{"teams":{"1":2},"members":{"10":1},"gateway_keys":{"9":2}}`,
+		"GET /workspaces/1/quota-summary":     `{"workspace_id":1,"plan":{"name":"Pro","slug":"pro","quotas":{"tokens":100}},"items":[{"key":"tokens","used":2,"limit":100,"unit":"tokens"}]}`,
+		"GET /workspaces/1/quota-usage":       `{"teams":{"used":1,"limit":5},"members":{"used":1,"limit":10},"api_keys":{"used":2,"limit":20}}`,
 		"PATCH /workspaces/1":                 `{"id":1,"name":"Renamed","status":"active"}`,
 		"GET /workspaces/1/activity":          `{"items":[{"id":123,"workspace_id":1,"actor_id":10,"what":"updated","resource":"workspace","created_at":"2026-07-08T00:00:00Z"}],"page_info":{}}`,
 	}
@@ -44,8 +44,8 @@ func TestRemainingManagementEndpoints(t *testing.T) {
 		if r.URL.Path == "/gateway/policies" && r.URL.Query().Get("key_id") != "9" {
 			t.Fatalf("key_id query = %q", r.URL.Query().Get("key_id"))
 		}
-		if r.URL.Path == "/users/me/invitations" && r.URL.Query().Get("limit") != "10" {
-			t.Fatalf("limit query = %q", r.URL.Query().Get("limit"))
+		if r.URL.Path == "/users/me/invitations" && len(r.URL.Query()) != 0 {
+			t.Fatalf("invitations query = %v, want none", r.URL.Query())
 		}
 		key := r.Method + " " + r.URL.Path
 		body, ok := expected[key]
@@ -126,7 +126,7 @@ func TestRemainingManagementEndpoints(t *testing.T) {
 	if got, _, err := client.GetQuotaSummary(ctx, 1); err != nil || got.WorkspaceID != 1 {
 		t.Fatalf("GetQuotaSummary = %+v, %v", got, err)
 	}
-	if got, _, err := client.GetQuotaUsage(ctx, 1); err != nil || got.Teams == nil {
+	if got, _, err := client.GetQuotaUsage(ctx, 1); err != nil || got.Teams.Used != 1 || got.APIKeys.Used != 2 {
 		t.Fatalf("GetQuotaUsage = %+v, %v", got, err)
 	}
 

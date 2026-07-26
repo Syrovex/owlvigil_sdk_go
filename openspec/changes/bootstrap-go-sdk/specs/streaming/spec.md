@@ -5,7 +5,7 @@ The SDK SHALL support streaming Gateway responses for model endpoints that retur
 
 #### Scenario: Stream chat completions
 - **WHEN** a caller creates a streaming chat completion request
-- **THEN** the SDK MUST connect to `POST /v1/chat/completions` on `api.owlvigil.com` and expose decoded stream events.
+- **THEN** the SDK MUST connect to `POST /v1/chat/completions` on `gateway.owlvigil.com` and expose decoded stream events.
 
 ### Requirement: Stream lifecycle
 The SDK SHALL provide explicit stream close behavior and MUST respect context cancellation.
