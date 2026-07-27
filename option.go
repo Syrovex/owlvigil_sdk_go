@@ -2,6 +2,7 @@ package owlvigil
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -44,6 +45,7 @@ type Config struct {
 	AccessTokenProvider TokenProvider
 	RetryMax            int
 	RetryWait           time.Duration
+	invalidEnvironment  Environment
 }
 
 // Option configures SDK clients.
@@ -51,6 +53,15 @@ type Option func(*Config)
 
 // TokenProvider returns an authentication token for a request.
 type TokenProvider func(context.Context) (string, error)
+
+// Validate reports configuration errors that would make an SDK request unsafe
+// or invalid.
+func (c Config) Validate() error {
+	if c.invalidEnvironment != "" {
+		return fmt.Errorf("unsupported environment %q", c.invalidEnvironment)
+	}
+	return nil
+}
 
 // DefaultConfig returns conservative default client configuration.
 // The baseURL parameter must be a valid HTTP(S) URL.
@@ -93,10 +104,17 @@ func WithBaseURL(baseURL string) Option {
 // call WithEnvironment first, or WithBaseURL will override the environment setting.
 func WithEnvironment(env Environment) Option {
 	return func(c *Config) {
-		if c.BaseURL == "" {
+		switch env {
+		case EnvironmentProduction, EnvironmentStaging, EnvironmentLocal:
+			c.invalidEnvironment = ""
+		default:
+			c.invalidEnvironment = env
 			return
 		}
 
+		if c.BaseURL == "" {
+			return
+		}
 		switch env {
 		case EnvironmentStaging:
 			c.BaseURL = convertToStagingURL(c.BaseURL)
@@ -104,8 +122,6 @@ func WithEnvironment(env Environment) Option {
 			c.BaseURL = convertToLocalURL(c.BaseURL)
 		case EnvironmentProduction:
 			// Production is default, no change needed
-		default:
-			// Unknown environment, treat as production
 		}
 	}
 }

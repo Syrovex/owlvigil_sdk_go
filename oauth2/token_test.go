@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
@@ -111,5 +112,24 @@ func TestTokenOAuthErrorRedactsSecrets(t *testing.T) {
 	}
 	if oauthErr.ErrorDescription == "secret client_secret_123456 is invalid" {
 		t.Fatalf("secret was not redacted: %+v", oauthErr)
+	}
+}
+
+func TestExchange_RejectsOversizedResponse(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(strings.Repeat("x", 2<<20)))
+	}))
+	t.Cleanup(server.Close)
+
+	client := oauth2.NewClient(owlvigil.WithBaseURL(server.URL))
+	_, err := client.Exchange(context.Background(), oauth2.TokenExchangeRequest{
+		ClientID:    "client_123",
+		Code:        "code_123",
+		RedirectURI: "https://app.example.com/callback",
+	})
+	if err == nil || !strings.Contains(err.Error(), "exceeds") {
+		t.Errorf("Exchange(oversized response) error = %v, want oversized-response error", err)
 	}
 }

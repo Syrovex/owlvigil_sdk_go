@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
@@ -52,5 +53,20 @@ func TestUserInfoError(t *testing.T) {
 	}
 	if oauthErr.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("oauthErr = %+v", oauthErr)
+	}
+}
+
+func TestUserInfo_RejectsOversizedResponse(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(strings.Repeat("x", 2<<20)))
+	}))
+	t.Cleanup(server.Close)
+
+	client := oauth2.NewClient(owlvigil.WithBaseURL(server.URL))
+	_, err := client.UserInfo(context.Background(), "access_token_123456")
+	if err == nil || !strings.Contains(err.Error(), "exceeds") {
+		t.Errorf("UserInfo(oversized response) error = %v, want oversized-response error", err)
 	}
 }

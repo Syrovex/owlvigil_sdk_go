@@ -118,14 +118,15 @@ func TestGatewayClientMethods(t *testing.T) {
 func TestListAndGetModels(t *testing.T) {
 	t.Parallel()
 
-	paths := make(chan string, 2)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		paths <- r.URL.Path
 		switch r.URL.Path {
 		case "/v1/models":
 			_, _ = w.Write([]byte(`{"object":"list","data":[{"id":"model-a"}]}`))
-		case "/v1/models/model-a":
-			_, _ = w.Write([]byte(`{"id":"model-a","object":"model"}`))
+		case "/v1/models/gpt-4o/mini":
+			if got, want := r.RequestURI, "/v1/models/gpt-4o%2Fmini"; got != want {
+				t.Errorf("GetModel(%q) RequestURI = %q, want %q", "gpt-4o/mini", got, want)
+			}
+			_, _ = w.Write([]byte(`{"id":"gpt-4o/mini","object":"model"}`))
 		default:
 			t.Fatalf("unexpected path %q", r.URL.Path)
 		}
@@ -140,11 +141,11 @@ func TestListAndGetModels(t *testing.T) {
 	if len(models.Data) != 1 || models.Data[0].ID != "model-a" {
 		t.Fatalf("models = %+v", models)
 	}
-	model, _, err := client.GetModel(context.Background(), "model-a")
+	model, _, err := client.GetModel(context.Background(), "gpt-4o/mini")
 	if err != nil {
 		t.Fatalf("GetModel returned error: %v", err)
 	}
-	if model.ID != "model-a" {
+	if model.ID != "gpt-4o/mini" {
 		t.Fatalf("model = %+v", model)
 	}
 }

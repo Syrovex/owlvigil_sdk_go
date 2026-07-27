@@ -3,10 +3,10 @@ package oauth2
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 
 	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
+	"github.com/Syrovex/owlvigil_sdk_go/internal/owlvigilhttp"
 )
 
 // UserInfo describes the current OAuth2.0 user.
@@ -35,7 +35,11 @@ func (c *Client) UserInfo(ctx context.Context, accessToken string) (*UserInfo, e
 		return nil, err
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
+	bodyLimit := int64(maxOAuthResponseBodySize)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		bodyLimit = maxOAuthErrorResponseBodySize
+	}
+	body, err := owlvigilhttp.ReadAllLimited(resp.Body, bodyLimit)
 	if err != nil {
 		return nil, err
 	}

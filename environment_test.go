@@ -1,9 +1,13 @@
 package owlvigil_test
 
 import (
+	"context"
+	"net/http"
+	"sync/atomic"
 	"testing"
 
 	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
+	"github.com/Syrovex/owlvigil_sdk_go/gateway"
 )
 
 func TestWithEnvironment(t *testing.T) {
@@ -154,4 +158,40 @@ func TestEnvironmentWithBaseURL(t *testing.T) {
 	if config.BaseURL != "https://custom.example.com" {
 		t.Errorf("After WithBaseURL, BaseURL = %v, want %v", config.BaseURL, "https://custom.example.com")
 	}
+}
+
+func TestWithEnvironment_UnknownValueFailsBeforeRequest(t *testing.T) {
+	t.Parallel()
+
+	var emptyConfig owlvigil.Config
+	owlvigil.WithEnvironment(owlvigil.Environment("stagng"))(&emptyConfig)
+	if err := emptyConfig.Validate(); err == nil {
+		t.Error(`Config.Validate() after Environment("stagng") error = nil, want configuration error`)
+	}
+
+	var requests atomic.Int32
+	httpClient := &http.Client{
+		Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+			requests.Add(1)
+			return nil, nil
+		}),
+	}
+	client := gateway.NewClient(
+		owlvigil.WithEnvironment(owlvigil.Environment("stagng")),
+		owlvigil.WithHTTPClient(httpClient),
+	)
+
+	_, _, err := client.ListModels(context.Background())
+	if err == nil {
+		t.Fatal(`ListModels() with Environment("stagng") error = nil, want configuration error`)
+	}
+	if got := requests.Load(); got != 0 {
+		t.Errorf(`ListModels() with Environment("stagng") requests = %d, want 0`, got)
+	}
+}
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
 }

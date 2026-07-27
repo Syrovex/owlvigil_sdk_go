@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -121,6 +122,85 @@ func TestClientDoAPIErrorRedactsSecret(t *testing.T) {
 	}
 	if apiErr.RequestID != "req_bad" || apiErr.Code != "bad_secret" {
 		t.Fatalf("apiErr = %+v", apiErr)
+	}
+}
+
+func TestClientDo_APIErrorRedactsDynamicAndRequestSecrets(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		configure func(*owlvigil.Config)
+		authToken string
+	}{
+		{
+			name: "dynamic API key",
+			configure: func(cfg *owlvigil.Config) {
+				cfg.APIKeyProvider = func(context.Context) (string, error) {
+					return "dynamic_api_key_123456", nil
+				}
+			},
+			authToken: "dynamic_api_key_123456",
+		},
+		{
+			name: "dynamic access token",
+			configure: func(cfg *owlvigil.Config) {
+				cfg.AccessTokenProvider = func(context.Context) (string, error) {
+					return "dynamic_access_token_123456", nil
+				}
+			},
+			authToken: "dynamic_access_token_123456",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			const submittedAPIKey = "submitted_provider_key_123456"
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if got, want := r.Header.Get("Authorization"), "Bearer "+tt.authToken; got != want {
+					t.Errorf("Do() Authorization = %q, want %q", got, want)
+				}
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = fmt.Fprintf(
+					w,
+					`{"code":"invalid_%s","message":"credentials %s and %s are invalid"}`,
+					tt.authToken,
+					tt.authToken,
+					submittedAPIKey,
+				)
+			}))
+			t.Cleanup(server.Close)
+
+			cfg := owlvigil.DefaultConfig(server.URL)
+			tt.configure(&cfg)
+			client := New(cfg)
+
+			meta, err := client.Do(
+				context.Background(),
+				http.MethodPost,
+				"/providers",
+				nil,
+				map[string]string{"api_key": submittedAPIKey},
+				nil,
+			)
+			var apiErr *owlvigil.APIError
+			if !errors.As(err, &apiErr) {
+				t.Fatalf("Do() error = %T, want *owlvigil.APIError", err)
+			}
+			for label, value := range map[string]string{
+				"ResponseMeta.Code":    meta.Code,
+				"ResponseMeta.Message": meta.Message,
+				"APIError.Code":        apiErr.Code,
+				"APIError.Message":     apiErr.Message,
+				"APIError.Body":        apiErr.Body,
+			} {
+				if strings.Contains(value, tt.authToken) || strings.Contains(value, submittedAPIKey) {
+					t.Errorf("Do() %s = %q, want credentials redacted", label, value)
+				}
+			}
+		})
 	}
 }
 

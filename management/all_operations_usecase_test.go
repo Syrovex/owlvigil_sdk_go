@@ -79,8 +79,8 @@ func executableManagementPath(pattern string) string {
 		":provider_id", "67",
 		":key_id", "77",
 		":keyword_id", "137",
-		":model_id", "gpt-4.1",
-		":route_id", "route_87",
+		":model_id", "41",
+		":route_id", "87",
 		":request_id", "req_97",
 		":trace_id", "trace_107",
 		":payload_id", "117",
@@ -710,7 +710,7 @@ func gatewayUseCases() []executableManagementUseCase {
 			name: "get model", contract: "GET /v1/gateway/models/:model_id",
 			call: func(ctx context.Context, client *management.Client) error {
 				return managementResult(func() (*management.Model, *owlvigil.ResponseMeta, error) {
-					return client.GetModel(ctx, "gpt-4.1", workspace)
+					return client.GetModel(ctx, "41", workspace)
 				})
 			},
 		},
@@ -726,7 +726,7 @@ func gatewayUseCases() []executableManagementUseCase {
 			name: "get route", contract: "GET /v1/gateway/routes/:route_id",
 			call: func(ctx context.Context, client *management.Client) error {
 				return managementResult(func() (*management.Route, *owlvigil.ResponseMeta, error) {
-					return client.GetRouteWithFilters(ctx, "route_87", management.RouteDetailOptions{}, workspace)
+					return client.GetRouteWithFilters(ctx, "87", management.RouteDetailOptions{}, workspace)
 				})
 			},
 		},

@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
@@ -58,6 +59,9 @@ func (c *Client) CreateChatCompletion(ctx context.Context, req *ChatCompletionRe
 
 // CreateChatCompletionStream calls POST /v1/chat/completions with stream=true.
 func (c *Client) CreateChatCompletionStream(ctx context.Context, req *ChatCompletionRequest, opts ...owlvigil.RequestOption) (*Stream, error) {
+	if req == nil {
+		return nil, errors.New("owlvigil: chat completion stream request is nil")
+	}
 	copyReq := *req
 	copyReq.Stream = true
 	return c.newStream(ctx, http.MethodPost, "/v1/chat/completions", &copyReq, opts...)

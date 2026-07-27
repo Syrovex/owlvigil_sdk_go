@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
@@ -68,5 +69,69 @@ func TestCreateStreamHTTPError(t *testing.T) {
 	}
 	if apiErr.StatusCode != http.StatusUnauthorized || apiErr.RequestID != "req_stream" {
 		t.Fatalf("apiErr = %+v", apiErr)
+	}
+}
+
+func TestCreateStreamHTTPError_RedactsDynamicCredential(t *testing.T) {
+	t.Parallel()
+
+	const dynamicKey = "dynamic_gateway_key_123456"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"code":"invalid_dynamic_gateway_key_123456","message":"bad dynamic_gateway_key_123456"}`))
+	}))
+	t.Cleanup(server.Close)
+
+	client := gateway.NewClient(
+		owlvigil.WithBaseURL(server.URL),
+		owlvigil.WithAPIKeyProvider(func(context.Context) (string, error) {
+			return dynamicKey, nil
+		}),
+	)
+	_, err := client.CreateResponseStream(
+		context.Background(),
+		&gateway.ResponseRequest{Model: "gpt-4o-mini", Input: "hi"},
+	)
+	var apiErr *owlvigil.APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("CreateResponseStream() error = %T, want *owlvigil.APIError", err)
+	}
+	if strings.Contains(apiErr.Code, dynamicKey) ||
+		strings.Contains(apiErr.Message, dynamicKey) ||
+		strings.Contains(apiErr.Body, dynamicKey) {
+		t.Errorf("CreateResponseStream() error = %+v, want dynamic credential redacted", apiErr)
+	}
+}
+
+func TestCreateStream_NilRequestReturnsError(t *testing.T) {
+	t.Parallel()
+
+	client := gateway.NewClient(owlvigil.WithBaseURL("https://example.com"))
+	tests := []struct {
+		name string
+		call func() error
+	}{
+		{
+			name: "chat completion",
+			call: func() error {
+				_, err := client.CreateChatCompletionStream(context.Background(), nil)
+				return err
+			},
+		},
+		{
+			name: "response",
+			call: func() error {
+				_, err := client.CreateResponseStream(context.Background(), nil)
+				return err
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.call(); err == nil {
+				t.Errorf("%s stream call error = nil, want non-nil error", tt.name)
+			}
+		})
 	}
 }

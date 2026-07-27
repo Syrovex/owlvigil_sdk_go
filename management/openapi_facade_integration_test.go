@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -78,6 +79,7 @@ func TestAllExecutableManagementUseCasesPassRefactoredOpenAPIFacade(t *testing.T
 	process := exec.Command(binary)
 	process.Env = append(os.Environ(),
 		"OPENAPI_LISTEN_ADDR="+listenAddress,
+		"OPENAPI_PUBLIC_HOST=openapi.owlvigil.test",
 		"OPENAPI_DASHBOARD_URL="+upstream.URL,
 		"OPENAPI_DASHBOARD_MANAGEMENT_HOST=api.owlvigil.test",
 		"OPENAPI_REQUEST_TIMEOUT=5s",
@@ -89,25 +91,22 @@ func TestAllExecutableManagementUseCasesPassRefactoredOpenAPIFacade(t *testing.T
 	if err := process.Start(); err != nil {
 		t.Fatalf("start current OpenAPI facade: %v", err)
 	}
-	processDone := make(chan error, 1)
-	go func() {
-		processDone <- process.Wait()
-	}()
+	processResult := newProcessResult(process.Wait)
 	t.Cleanup(func() {
 		if process.Process == nil {
 			return
 		}
 		_ = process.Process.Signal(os.Interrupt)
 		select {
-		case <-processDone:
+		case <-processResult.done:
 		case <-time.After(5 * time.Second):
 			_ = process.Process.Kill()
-			<-processDone
+			<-processResult.done
 		}
 	})
 
 	baseURL := "http://" + listenAddress
-	if err := waitForOpenAPIHealth(t.Context(), baseURL+"/healthz", processDone); err != nil {
+	if err := waitForOpenAPIHealth(t.Context(), baseURL+"/healthz", processResult); err != nil {
 		t.Fatalf("wait for current OpenAPI facade: %v\n%s", err, processOutput.String())
 	}
 
@@ -169,7 +168,26 @@ func assertForwardedManagementBody(t *testing.T, contract string, got, want []by
 	assertJSONSemanticallyEqual(t, got, string(want))
 }
 
-func waitForOpenAPIHealth(ctx context.Context, healthURL string, processDone <-chan error) error {
+type processResult struct {
+	done chan struct{}
+	err  error
+}
+
+func newProcessResult(wait func() error) *processResult {
+	result := &processResult{done: make(chan struct{})}
+	go func() {
+		result.err = wait()
+		close(result.done)
+	}()
+	return result
+}
+
+func (r *processResult) wait() error {
+	<-r.done
+	return r.err
+}
+
+func waitForOpenAPIHealth(ctx context.Context, healthURL string, processResult *processResult) error {
 	deadline := time.NewTimer(20 * time.Second)
 	defer deadline.Stop()
 	ticker := time.NewTicker(25 * time.Millisecond)
@@ -190,7 +208,8 @@ func waitForOpenAPIHealth(ctx context.Context, healthURL string, processDone <-c
 		}
 
 		select {
-		case err := <-processDone:
+		case <-processResult.done:
+			err := processResult.wait()
 			if err == nil {
 				return context.Canceled
 			}
@@ -200,6 +219,20 @@ func waitForOpenAPIHealth(ctx context.Context, healthURL string, processDone <-c
 		case <-deadline.C:
 			return context.DeadlineExceeded
 		case <-ticker.C:
+		}
+	}
+}
+
+func TestProcessResult_CanBeObservedMoreThanOnce(t *testing.T) {
+	t.Parallel()
+
+	want := errors.New("process exited")
+	result := newProcessResult(func() error { return want })
+	<-result.done
+
+	for observer := 1; observer <= 2; observer++ {
+		if err := result.wait(); !errors.Is(err, want) {
+			t.Errorf("processResult.wait() observer %d error = %v, want %v", observer, err, want)
 		}
 	}
 }

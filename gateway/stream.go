@@ -39,7 +39,7 @@ func (c *Client) newStream(ctx context.Context, method, endpoint string, body an
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		// DecodeResponse closes resp.Body via defer, so this is safe
-		_, err := owlvigilhttp.DecodeResponse(resp, nil, c.http.Config().APIKey)
+		_, err := owlvigilhttp.DecodeResponse(resp, nil, c.http.RequestSecrets(req)...)
 		if err != nil {
 			return nil, err
 		}

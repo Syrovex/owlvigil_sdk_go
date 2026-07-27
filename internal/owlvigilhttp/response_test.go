@@ -133,6 +133,42 @@ func TestDecodeResponseReadError(t *testing.T) {
 	}
 }
 
+func TestDecodeResponse_RejectsOversizedBodies(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		statusCode int
+		bodySize   int
+	}{
+		{
+			name:       "success response",
+			statusCode: http.StatusOK,
+			bodySize:   maxResponseBodySize + 1,
+		},
+		{
+			name:       "error response",
+			statusCode: http.StatusBadRequest,
+			bodySize:   maxErrorResponseBodySize + 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			resp := &http.Response{
+				StatusCode: tt.statusCode,
+				Body:       ioNopCloser(strings.Repeat("x", tt.bodySize)),
+			}
+			_, err := DecodeResponse(resp, nil)
+			if err == nil || !strings.Contains(err.Error(), "exceeds") {
+				t.Errorf("DecodeResponse(%d-byte body) error = %v, want oversized-response error", tt.bodySize, err)
+			}
+		})
+	}
+}
+
 func ioNopCloser(s string) *readCloser {
 	return &readCloser{Reader: strings.NewReader(s)}
 }

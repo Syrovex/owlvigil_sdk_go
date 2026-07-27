@@ -47,7 +47,7 @@ func TestRemainingManagementEndpoints(t *testing.T) {
 		if r.URL.Path == "/users/me/invitations" && len(r.URL.Query()) != 0 {
 			t.Fatalf("invitations query = %v, want none", r.URL.Query())
 		}
-		key := r.Method + " " + r.URL.Path
+		key := r.Method + " " + r.URL.EscapedPath()
 		body, ok := expected[key]
 		if !ok {
 			t.Fatalf("unexpected request %s", key)

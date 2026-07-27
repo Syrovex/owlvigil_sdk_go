@@ -3,7 +3,7 @@ package oauth2
 import (
 	"context"
 	"encoding/json"
-	"io"
+	"fmt"
 	"net/http"
 	"net/url"
 	"path"
@@ -12,6 +12,11 @@ import (
 
 	owlvigil "github.com/Syrovex/owlvigil_sdk_go"
 	"github.com/Syrovex/owlvigil_sdk_go/internal/owlvigilhttp"
+)
+
+const (
+	maxOAuthResponseBodySize      = 1 << 20
+	maxOAuthErrorResponseBodySize = 64 << 10
 )
 
 // TokenResponse is returned by OAuth2.0 token endpoints.
@@ -112,7 +117,11 @@ func (c *Client) postForm(ctx context.Context, endpoint string, values url.Value
 		return nil, err
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
+	bodyLimit := int64(maxOAuthResponseBodySize)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		bodyLimit = maxOAuthErrorResponseBodySize
+	}
+	body, err := owlvigilhttp.ReadAllLimited(resp.Body, bodyLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -154,6 +163,9 @@ func (c *Client) postForm(ctx context.Context, endpoint string, values url.Value
 }
 
 func (c *Client) endpoint(endpoint string) (string, error) {
+	if err := c.cfg.Validate(); err != nil {
+		return "", fmt.Errorf("owlvigil oauth2: invalid configuration: %w", err)
+	}
 	u, err := url.Parse(c.cfg.BaseURL)
 	if err != nil {
 		return "", err

@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"path"
 	"strings"
 	"time"
 
@@ -40,6 +39,13 @@ func (c *Client) BaseURL() string {
 // Config returns the underlying client configuration.
 func (c *Client) Config() owlvigil.Config {
 	return c.cfg
+}
+
+// RequestSecrets returns configured and request-specific authentication values
+// that must be redacted from errors.
+func (c *Client) RequestSecrets(req *http.Request) []string {
+	secrets := []string{c.cfg.APIKey, c.cfg.AccessToken}
+	return append(secrets, requestHeaderSecrets(req)...)
 }
 
 // Do sends a JSON request and decodes either an OwlVigil envelope or a raw JSON response.
@@ -86,7 +92,8 @@ func (c *Client) Do(ctx context.Context, method, endpoint string, query url.Valu
 			continue
 		}
 
-		meta, err := DecodeResponse(resp, out, c.cfg.APIKey, c.cfg.AccessToken)
+		secrets := append(c.RequestSecrets(req), sensitiveJSONValues(bodyBytes)...)
+		meta, err := DecodeResponse(resp, out, secrets...)
 		if err != nil {
 			lastErr = err
 			var apiErr *owlvigil.APIError
@@ -136,6 +143,9 @@ func (c *Client) StreamHTTPClient() *http.Client {
 }
 
 func (c *Client) newRequest(ctx context.Context, method, endpoint string, query url.Values, body []byte, reqCfg owlvigil.RequestConfig) (*http.Request, error) {
+	if err := c.cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("owlvigil: invalid configuration: %w", err)
+	}
 	u, err := joinURL(c.cfg.BaseURL, endpoint)
 	if err != nil {
 		return nil, err
@@ -215,12 +225,32 @@ func joinURL(base, endpoint string) (*url.URL, error) {
 	if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
 		return url.Parse(endpoint)
 	}
-	basePath := strings.TrimRight(u.Path, "/")
-	endpointPath := strings.TrimLeft(endpoint, "/")
-	u.Path = path.Join(basePath, endpointPath)
-	if strings.HasPrefix(endpoint, "/") && basePath == "" {
-		u.Path = "/" + endpointPath
+	relative, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, err
 	}
+
+	basePath := strings.TrimRight(u.Path, "/")
+	endpointPath := strings.TrimLeft(relative.Path, "/")
+	joinedPath := basePath + "/" + endpointPath
+	if basePath == "" && endpointPath == "" {
+		joinedPath = "/"
+	}
+
+	baseEscapedPath := strings.TrimRight(u.EscapedPath(), "/")
+	endpointEscapedPath := strings.TrimLeft(relative.EscapedPath(), "/")
+	joinedEscapedPath := baseEscapedPath + "/" + endpointEscapedPath
+	if baseEscapedPath == "" && endpointEscapedPath == "" {
+		joinedEscapedPath = "/"
+	}
+
+	u.Path = joinedPath
+	u.RawPath = ""
+	if joinedEscapedPath != u.EscapedPath() {
+		u.RawPath = joinedEscapedPath
+	}
+	u.RawQuery = relative.RawQuery
+	u.Fragment = relative.Fragment
 	return u, nil
 }
 
