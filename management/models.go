@@ -93,7 +93,7 @@ func (r *Route) UnmarshalJSON(data []byte) error {
 	}
 	*r = Route(raw.alias)
 	r.ID = stringFromJSON(raw.ID)
-	if r.RouteID != "" {
+	if r.ID == "" {
 		r.ID = r.RouteID
 	}
 	if r.ModelID == "" {

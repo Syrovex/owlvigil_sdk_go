@@ -20,6 +20,7 @@ type FinancialGovernance struct {
 	MemberLimits         []SpendingLimit `json:"member_limits"`
 	Thresholds           *Thresholds     `json:"thresholds"`
 	ExceededAction       string          `json:"exceeded_action"`
+	UsageMultiplier      float64         `json:"usage_multiplier"`
 	Currency             string          `json:"currency"`
 	NotificationChannels []string        `json:"notification_channels"`
 
@@ -37,6 +38,9 @@ func (g *FinancialGovernance) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*g = FinancialGovernance(out)
+	if g.UsageMultiplier == 0 {
+		g.UsageMultiplier = 1
+	}
 	g.BudgetCaps = budgetCapsFromGovernance(g)
 	g.SpendingLimits = append([]SpendingLimit(nil), g.MemberLimits...)
 	return nil
@@ -52,6 +56,7 @@ type BudgetCaps struct {
 	MemberLimits         []SpendingLimit `json:"member_limits"`
 	Thresholds           Thresholds      `json:"thresholds"`
 	ExceededAction       string          `json:"exceeded_action"`
+	UsageMultiplier      float64         `json:"usage_multiplier"`
 	Currency             string          `json:"currency"`
 	NotificationChannels []string        `json:"notification_channels"`
 
@@ -71,6 +76,9 @@ func (b *BudgetCaps) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*b = BudgetCaps(current)
+	if b.UsageMultiplier == 0 {
+		b.UsageMultiplier = 1
+	}
 
 	var legacy struct {
 		Workspace   *BudgetCap            `json:"workspace,omitempty"`
@@ -107,6 +115,7 @@ func budgetCapsFromGovernance(g *FinancialGovernance) *BudgetCaps {
 		MemberLimits:         append([]SpendingLimit(nil), g.MemberLimits...),
 		Thresholds:           Thresholds{},
 		ExceededAction:       g.ExceededAction,
+		UsageMultiplier:      g.UsageMultiplier,
 		Currency:             g.Currency,
 		NotificationChannels: append([]string(nil), g.NotificationChannels...),
 	}
@@ -164,6 +173,8 @@ type BudgetCap struct {
 	Limit    float64 `json:"-"`
 	Used     float64 `json:"-"`
 	Currency string  `json:"-"`
+
+	monthlyAmountPresent bool
 }
 
 // UnmarshalJSON synchronizes current and legacy cap values.
@@ -182,7 +193,12 @@ func (b *BudgetCap) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &legacy); err != nil {
 		return err
 	}
-	if b.MonthlyAmount == 0 {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	_, b.monthlyAmountPresent = fields["monthly_amount"]
+	if !b.monthlyAmountPresent {
 		b.MonthlyAmount = legacy.Limit
 	}
 	if b.CurrentSpend == 0 {
@@ -197,7 +213,7 @@ func (b *BudgetCap) UnmarshalJSON(data []byte) error {
 // MarshalJSON emits the current Open API cap fields.
 func (b BudgetCap) MarshalJSON() ([]byte, error) {
 	monthlyAmount := b.MonthlyAmount
-	if monthlyAmount == 0 {
+	if !b.monthlyAmountPresent && monthlyAmount == 0 {
 		monthlyAmount = b.Limit
 	}
 	type wireCap struct {
@@ -251,13 +267,14 @@ type Thresholds struct {
 
 // UpdateFinancialGovernanceRequest updates financial governance config.
 type UpdateFinancialGovernanceRequest struct {
-	WorkspaceCap   *BudgetCap      `json:"workspace_cap,omitempty"`
-	TeamCaps       []BudgetCap     `json:"team_caps,omitempty"`
-	MemberCaps     []BudgetCap     `json:"member_caps,omitempty"`
-	GatewayKeyCaps []BudgetCap     `json:"gateway_key_caps,omitempty"`
-	MemberLimits   []SpendingLimit `json:"member_limits,omitempty"`
-	Thresholds     *Thresholds     `json:"thresholds,omitempty"`
-	ExceededAction *string         `json:"exceeded_action,omitempty"`
+	WorkspaceCap    *BudgetCap      `json:"workspace_cap,omitempty"`
+	TeamCaps        []BudgetCap     `json:"team_caps,omitempty"`
+	MemberCaps      []BudgetCap     `json:"member_caps,omitempty"`
+	GatewayKeyCaps  []BudgetCap     `json:"gateway_key_caps,omitempty"`
+	MemberLimits    []SpendingLimit `json:"member_limits,omitempty"`
+	Thresholds      *Thresholds     `json:"thresholds,omitempty"`
+	ExceededAction  *string         `json:"exceeded_action,omitempty"`
+	UsageMultiplier *float64        `json:"usage_multiplier,omitempty"`
 
 	// Legacy aliases retained for source compatibility.
 	BudgetCaps     *BudgetCaps     `json:"-"`
@@ -278,22 +295,24 @@ func (r UpdateFinancialGovernanceRequest) MarshalJSON() ([]byte, error) {
 		memberLimits = r.SpendingLimits
 	}
 	type wireRequest struct {
-		WorkspaceCap   *BudgetCap      `json:"workspace_cap,omitempty"`
-		TeamCaps       []BudgetCap     `json:"team_caps,omitempty"`
-		MemberCaps     []BudgetCap     `json:"member_caps,omitempty"`
-		GatewayKeyCaps []BudgetCap     `json:"gateway_key_caps,omitempty"`
-		MemberLimits   []SpendingLimit `json:"member_limits,omitempty"`
-		Thresholds     *Thresholds     `json:"thresholds,omitempty"`
-		ExceededAction *string         `json:"exceeded_action,omitempty"`
+		WorkspaceCap    *BudgetCap      `json:"workspace_cap,omitempty"`
+		TeamCaps        []BudgetCap     `json:"team_caps,omitempty"`
+		MemberCaps      []BudgetCap     `json:"member_caps,omitempty"`
+		GatewayKeyCaps  []BudgetCap     `json:"gateway_key_caps,omitempty"`
+		MemberLimits    []SpendingLimit `json:"member_limits,omitempty"`
+		Thresholds      *Thresholds     `json:"thresholds,omitempty"`
+		ExceededAction  *string         `json:"exceeded_action,omitempty"`
+		UsageMultiplier *float64        `json:"usage_multiplier,omitempty"`
 	}
 	return json.Marshal(wireRequest{
-		WorkspaceCap:   workspaceCap,
-		TeamCaps:       teamCaps,
-		MemberCaps:     memberCaps,
-		GatewayKeyCaps: gatewayKeyCaps,
-		MemberLimits:   memberLimits,
-		Thresholds:     r.Thresholds,
-		ExceededAction: r.ExceededAction,
+		WorkspaceCap:    workspaceCap,
+		TeamCaps:        teamCaps,
+		MemberCaps:      memberCaps,
+		GatewayKeyCaps:  gatewayKeyCaps,
+		MemberLimits:    memberLimits,
+		Thresholds:      r.Thresholds,
+		ExceededAction:  r.ExceededAction,
+		UsageMultiplier: r.UsageMultiplier,
 	})
 }
 

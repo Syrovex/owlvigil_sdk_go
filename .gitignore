@@ -6,3 +6,4 @@ coverage.out
 *.test
 vendor/
 examples/multi-environment/multi-environment
+demo/

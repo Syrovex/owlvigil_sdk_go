@@ -1841,6 +1841,7 @@ func TestFinancialRequestTypes_MarshalRefactoredOpenAPIFields(t *testing.T) {
 	monthlyAmount := 750.0
 	warningPercent := 75.5
 	criticalPercent := 90.5
+	usageMultiplier := 1.25
 
 	tests := []struct {
 		name  string
@@ -1863,15 +1864,17 @@ func TestFinancialRequestTypes_MarshalRefactoredOpenAPIFields(t *testing.T) {
 					CriticalPercent: 90.5,
 					ExceededAction:  "block",
 				},
-				ExceededAction: &exceededAction,
+				ExceededAction:  &exceededAction,
+				UsageMultiplier: &usageMultiplier,
 			},
 			want: `{
 				"workspace_cap":{"scope_type":"workspace","enabled":true,"monthly_amount":1000},
 				"team_caps":[{"scope_type":"team","scope_id":3,"team_id":3,"name":"Core","enabled":true,"monthly_amount":500}],
 				"member_limits":[{"user_id":10,"daily_limit":20,"weekly_limit":100,"monthly_limit":300}],
-				"thresholds":{"warning_percent":75.5,"critical_percent":90.5,"exceeded_action":"block"},
-				"exceeded_action":"block"
-			}`,
+					"thresholds":{"warning_percent":75.5,"critical_percent":90.5,"exceeded_action":"block"},
+					"exceeded_action":"block",
+					"usage_multiplier":1.25
+				}`,
 		},
 		{
 			name: "budget caps",
@@ -1940,15 +1943,17 @@ func TestFinancialResponseTypes_UnmarshalRefactoredOpenAPIFields(t *testing.T) {
 		"member_caps": [],
 		"gateway_key_caps": [],
 		"member_limits": [{"user_id":10,"email":"owner@example.com","name":"Owner","daily_limit":20,"weekly_limit":100,"monthly_limit":300,"daily_spend":2,"weekly_spend":10,"monthly_spend":30}],
-		"thresholds": {"warning_percent":75.5,"critical_percent":90.5,"exceeded_action":"block"},
-		"exceeded_action": "block",
-		"currency": "USD",
+			"thresholds": {"warning_percent":75.5,"critical_percent":90.5,"exceeded_action":"block"},
+			"exceeded_action": "block",
+			"usage_multiplier": 1.25,
+			"currency": "USD",
 		"notification_channels": ["email"]
 	}`, &governance)
 	if governance.WorkspaceID != 7 || governance.WorkspaceCap.MonthlyAmount != 1000 ||
 		len(governance.TeamCaps) != 1 || governance.TeamCaps[0].TeamID == nil ||
 		len(governance.MemberLimits) != 1 || governance.MemberLimits[0].MonthlySpend != 30 ||
 		governance.Thresholds.WarningPercent != 75.5 ||
+		governance.UsageMultiplier != 1.25 ||
 		len(governance.NotificationChannels) != 1 {
 		t.Errorf("FinancialGovernance = %+v, want current Open API fields", governance)
 	}
@@ -1961,15 +1966,37 @@ func TestFinancialResponseTypes_UnmarshalRefactoredOpenAPIFields(t *testing.T) {
 		"member_caps": [],
 		"gateway_key_caps": [],
 		"member_limits": [],
-		"thresholds": {"warning_percent":75,"critical_percent":90,"exceeded_action":"notify"},
-		"exceeded_action": "notify",
-		"currency": "USD",
+			"thresholds": {"warning_percent":75,"critical_percent":90,"exceeded_action":"notify"},
+			"exceeded_action": "notify",
+			"usage_multiplier": 1.25,
+			"currency": "USD",
 		"notification_channels": []
 	}`, &caps)
 	if caps.WorkspaceID != 7 || caps.WorkspaceCap.MonthlyAmount != 1000 ||
-		caps.Workspace == nil || caps.Workspace.Limit != 1000 {
+		caps.Workspace == nil || caps.Workspace.Limit != 1000 ||
+		caps.UsageMultiplier != 1.25 {
 		t.Errorf("BudgetCaps = %+v, want current and legacy aliases", caps)
 	}
+
+	t.Run("clears a decoded current cap instead of restoring the legacy limit", func(t *testing.T) {
+		var cap management.BudgetCap
+		mustUnmarshalJSON(t, `{
+			"scope_type":"workspace",
+			"enabled":true,
+			"monthly_amount":100
+		}`, &cap)
+		cap.MonthlyAmount = 0
+
+		got, err := json.Marshal(cap)
+		if err != nil {
+			t.Fatalf("json.Marshal(BudgetCap) error = %v", err)
+		}
+		assertJSONSemanticallyEqual(t, got, `{
+			"scope_type":"workspace",
+			"enabled":true,
+			"monthly_amount":0
+		}`)
+	})
 
 	var summary management.SpendSummary
 	mustUnmarshalJSON(t, `{
@@ -2065,9 +2092,11 @@ func TestCatalogResponseTypes_UnmarshalRefactoredOpenAPIFields(t *testing.T) {
 			"price_reference_id": "price_1"
 		}]
 	}`, &model)
-	if model.ID != "gpt-4.1" || model.Developer != "openai" || model.Type != "chat" ||
+	if model.ID != "gpt-4.1" || model.ModelID != "gpt-4.1" ||
+		model.Developer != "openai" || model.Type != "chat" ||
 		model.RouteCount != 2 || model.CreatedAt == "" || len(model.ModelCard) == 0 ||
-		len(model.Routes) != 1 || model.Routes[0].ActualModel == "" ||
+		len(model.Routes) != 1 || model.Routes[0].ID != "31" ||
+		model.Routes[0].RouteID != "route_31" || model.Routes[0].ActualModel == "" ||
 		model.Routes[0].ProviderPlatform == nil {
 		t.Errorf("Model = %+v, want current catalog detail fields", model)
 	}
