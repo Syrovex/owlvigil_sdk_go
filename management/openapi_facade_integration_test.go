@@ -158,7 +158,7 @@ func TestAllExecutableManagementUseCasesPassRefactoredOpenAPIFacade(t *testing.T
 func assertForwardedManagementBody(t *testing.T, contract string, got, want []byte) {
 	t.Helper()
 	got = bytes.TrimSpace(got)
-	want = bytes.TrimSpace(want)
+	want = bytes.TrimSpace(expectedDashboardManagementBody(t, contract, want))
 	if len(want) == 0 {
 		if len(got) != 0 {
 			t.Errorf("%s Dashboard upstream body = %s, want empty body", contract, got)
@@ -166,6 +166,35 @@ func assertForwardedManagementBody(t *testing.T, contract string, got, want []by
 		return
 	}
 	assertJSONSemanticallyEqual(t, got, string(want))
+}
+
+func expectedDashboardManagementBody(
+	t *testing.T,
+	contract string,
+	body []byte,
+) []byte {
+	t.Helper()
+	if contract != "PATCH /v1/gateway/providers/:provider_id" {
+		return body
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(body, &fields); err != nil {
+		t.Fatalf(
+			"json.Unmarshal(%s SDK body) error = %v",
+			contract,
+			err,
+		)
+	}
+	delete(fields, "workspace_id")
+	forwarded, err := json.Marshal(fields)
+	if err != nil {
+		t.Fatalf(
+			"json.Marshal(%s expected Dashboard body) error = %v",
+			contract,
+			err,
+		)
+	}
+	return forwarded
 }
 
 type processResult struct {

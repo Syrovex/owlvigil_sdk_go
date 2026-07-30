@@ -426,7 +426,7 @@ func TestClient_VerifyProviderConnection_UsesOpenAPIContract(t *testing.T) {
 	)
 }
 
-func TestClient_UpdateProvider_IncludesWorkspaceInRefactoredOpenAPIBody(t *testing.T) {
+func TestClient_UpdateProvider_SendsWorkspaceInQueryAndBody(t *testing.T) {
 	t.Parallel()
 
 	client, requests := newManagementContractClient(t, `{

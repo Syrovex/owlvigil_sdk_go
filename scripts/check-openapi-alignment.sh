@@ -6,7 +6,7 @@ dashboard_repo=${2:-../owlvigil_dashboard}
 openapi_catalog="$openapi_repo/test/k6/openapi-management/catalog.js"
 dashboard_catalog="$dashboard_repo/backend/internal/server/managementroute/catalog.go"
 sdk_use_cases="management/all_operations_usecase_test.go"
-sdk_live_use_cases="examples/openapi-smoke/main.go"
+sdk_live_use_cases="examples/internal/fullsmoke/runner.go"
 alignment_tmp=$(mktemp -d "${TMPDIR:-/tmp}/owlvigil-openapi-alignment.XXXXXX")
 trap 'rm -rf "$alignment_tmp"' EXIT HUP INT TERM
 
