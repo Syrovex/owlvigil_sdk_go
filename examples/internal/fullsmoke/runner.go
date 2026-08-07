@@ -161,11 +161,7 @@ func (r *runner) runUserAndWorkspace() {
 		if err != nil {
 			return err
 		}
-		_, _, err = r.management.UpdateUserProfile(r.ctx, &management.UpdateUserProfileRequest{
-			Name:               &profile.Name,
-			AvatarURL:          &profile.AvatarURL,
-			DefaultWorkspaceID: &profile.DefaultWorkspaceID,
-		})
+		_, _, err = r.management.UpdateUserProfile(r.ctx, currentUserProfileUpdateRequest(profile))
 		return err
 	})
 	r.configuredWrite(
@@ -314,12 +310,20 @@ func (r *runner) runUserAndWorkspace() {
 	})
 }
 
+func currentUserProfileUpdateRequest(profile *management.UserProfile) *management.UpdateUserProfileRequest {
+	return &management.UpdateUserProfileRequest{
+		Username:           &profile.Username,
+		AvatarURL:          &profile.AvatarURL,
+		DefaultWorkspaceID: &profile.DefaultWorkspaceID,
+	}
+}
+
 func (r *runner) runWorkspaceAccess() {
 	r.call("get workspace activity", "GET /v1/workspaces/:workspace_id/activity", func() error {
 		_, _, err := r.management.ListWorkspaceActivity(r.ctx, r.workspaceID, management.ListOptions{Limit: 5})
 		return err
 	})
-	r.call("list workspace audit logs", "GET /v1/workspaces/:workspace_id/audit-logs", func() error {
+	r.callSkipKnown("list workspace audit logs", "GET /v1/workspaces/:workspace_id/audit-logs", []string{"feature.audit_logs is not included"}, func() error {
 		logs, _, err := r.management.ListAuditLogs(r.ctx, r.workspaceID, management.AuditLogListOptions{Limit: 5})
 		if err != nil {
 			return err
@@ -770,10 +774,9 @@ func (r *runner) runGateway() {
 		return nil
 	})
 	if modelName != "" {
-		r.callSkipKnown(
+		r.call(
 			"get model",
 			"GET /v1/gateway/models/:model_id",
-			[]string{"model_id must be a positive integer"},
 			func() error {
 				_, _, err := r.management.GetModel(r.ctx, modelName, workspaceOpt)
 				return err
@@ -869,7 +872,7 @@ func (r *runner) runGateway() {
 		_, _, err := r.management.GetPayloadAccess(r.ctx, workspaceOpt)
 		return err
 	})
-	r.call("list payload logs", "GET /v1/gateway/payload-logs", func() error {
+	r.callSkipKnown("list payload logs", "GET /v1/gateway/payload-logs", []string{"enable request or response payload logging to view payload logs"}, func() error {
 		logs, _, err := r.management.ListPayloadLogs(r.ctx, r.workspaceID, management.ListOptions{Limit: 5})
 		if err != nil {
 			return err
@@ -1440,7 +1443,7 @@ func (r *runner) runFinancial() {
 		dailyLimit := positiveLimitOrDefault(limit.DailyLimit)
 		weeklyLimit := positiveLimitOrDefault(limit.WeeklyLimit)
 		monthlyLimit := positiveLimitOrDefault(limit.MonthlyLimit)
-		r.write("update user spending limit", "PATCH /v1/workspaces/:workspace_id/governance/financial/spending-limits/users/:user_id", "financial write endpoint not exercised in smoke", func() error {
+		r.writeSkipKnown("update user spending limit", "PATCH /v1/workspaces/:workspace_id/governance/financial/spending-limits/users/:user_id", "financial write endpoint not exercised in smoke", []string{"feature.team_budget_controls is not included"}, func() error {
 			_, _, err := r.management.UpdateUserSpendingLimit(r.ctx, r.workspaceID, limit.UserID, &management.UpdateUserSpendingLimitRequest{
 				DailyLimit: &dailyLimit, WeeklyLimit: &weeklyLimit, MonthlyLimit: &monthlyLimit,
 			})

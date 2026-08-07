@@ -3,6 +3,7 @@ package fullsmoke
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -178,6 +179,30 @@ func TestFirstRegisteredMemberUserID(t *testing.T) {
 	}
 	if got := firstRegisteredMemberUserID(members); got != 64 {
 		t.Errorf("firstRegisteredMemberUserID() = %d, want 64", got)
+	}
+}
+
+func TestCurrentUserProfileUpdateRequestUsesUsername(t *testing.T) {
+	profile := &management.UserProfile{
+		Username:           "sdk-smoke-user",
+		Name:               "shared display name",
+		AvatarURL:          "https://example.com/avatar.png",
+		DefaultWorkspaceID: 295,
+	}
+
+	body, err := json.Marshal(currentUserProfileUpdateRequest(profile))
+	if err != nil {
+		t.Fatalf("marshal profile update request: %v", err)
+	}
+	var requestBody map[string]any
+	if err := json.Unmarshal(body, &requestBody); err != nil {
+		t.Fatalf("unmarshal profile update request: %v", err)
+	}
+	if got := requestBody["username"]; got != profile.Username {
+		t.Errorf("username = %v, want %q", got, profile.Username)
+	}
+	if got := requestBody["username"]; got == profile.Name {
+		t.Errorf("username = display name %q, want account username", profile.Name)
 	}
 }
 
