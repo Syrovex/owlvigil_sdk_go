@@ -31,6 +31,40 @@ type step struct {
 	Error    string
 }
 
+type expectedAPIError struct {
+	statusCode      int
+	code            string
+	messageContains string
+}
+
+var (
+	auditLogsFeatureGate = expectedAPIError{
+		statusCode:      http.StatusPaymentRequired,
+		code:            "upgrade_required",
+		messageContains: "feature.audit_logs is not included",
+	}
+	rbacFeatureGate = expectedAPIError{
+		statusCode:      http.StatusPaymentRequired,
+		code:            "upgrade_required",
+		messageContains: "feature.rbac is not included",
+	}
+	payloadLogsFeatureGate = expectedAPIError{
+		statusCode:      http.StatusForbidden,
+		code:            "forbidden",
+		messageContains: "enable request or response payload logging to view payload logs",
+	}
+	teamBudgetFeatureGate = expectedAPIError{
+		statusCode:      http.StatusPaymentRequired,
+		code:            "upgrade_required",
+		messageContains: "feature.team_budget_controls is not included",
+	}
+	gatewayKeyQuotaGate = expectedAPIError{
+		statusCode:      http.StatusPaymentRequired,
+		code:            "quota_exceeded",
+		messageContains: "quota.gateway_keys limit exceeded",
+	}
+)
+
 type runner struct {
 	ctx          context.Context
 	oauth        *oauth2.Client
@@ -323,7 +357,7 @@ func (r *runner) runWorkspaceAccess() {
 		_, _, err := r.management.ListWorkspaceActivity(r.ctx, r.workspaceID, management.ListOptions{Limit: 5})
 		return err
 	})
-	r.callSkipKnown("list workspace audit logs", "GET /v1/workspaces/:workspace_id/audit-logs", []string{"feature.audit_logs is not included"}, func() error {
+	r.callSkipExpected("list workspace audit logs", "GET /v1/workspaces/:workspace_id/audit-logs", auditLogsFeatureGate, func() error {
 		logs, _, err := r.management.ListAuditLogs(r.ctx, r.workspaceID, management.AuditLogListOptions{Limit: 5})
 		if err != nil {
 			return err
@@ -440,7 +474,7 @@ func (r *runner) runWorkspaceAccess() {
 		}
 		return nil
 	})
-	r.callSkipKnown("get member role options", "GET /v1/workspaces/:workspace_id/members/role-options", []string{"feature.rbac is not included"}, func() error {
+	r.callSkipExpected("get member role options", "GET /v1/workspaces/:workspace_id/members/role-options", rbacFeatureGate, func() error {
 		_, _, err := r.management.ListRoleOptions(r.ctx, r.workspaceID)
 		return err
 	})
@@ -514,7 +548,7 @@ func (r *runner) runWorkspaceAccess() {
 	}
 
 	var roleForGetID int64
-	r.callSkipKnown("list workspace roles", "GET /v1/workspaces/:workspace_id/roles", []string{"feature.rbac is not included"}, func() error {
+	r.callSkipExpected("list workspace roles", "GET /v1/workspaces/:workspace_id/roles", rbacFeatureGate, func() error {
 		roles, _, err := r.management.ListRoles(r.ctx, r.workspaceID, management.ListOptions{Limit: 5})
 		if err != nil {
 			return err
@@ -536,7 +570,7 @@ func (r *runner) runWorkspaceAccess() {
 		return err
 	})
 	if roleForGetID > 0 {
-		r.callSkipKnown("get workspace role", "GET /v1/workspaces/:workspace_id/roles/:role_id", []string{"feature.rbac is not included"}, func() error {
+		r.callSkipExpected("get workspace role", "GET /v1/workspaces/:workspace_id/roles/:role_id", rbacFeatureGate, func() error {
 			_, _, err := r.management.GetRole(r.ctx, r.workspaceID, roleForGetID)
 			return err
 		})
@@ -557,7 +591,7 @@ func (r *runner) runWorkspaceAccess() {
 		r.skip("update workspace role", "PATCH /v1/workspaces/:workspace_id/roles/:role_id", "temporary role was not created")
 		r.skip("delete workspace role", "DELETE /v1/workspaces/:workspace_id/roles/:role_id", "temporary role was not created")
 	}
-	r.callSkipKnown("list workspace permissions", "GET /v1/workspaces/:workspace_id/permissions", []string{"feature.rbac is not included"}, func() error {
+	r.callSkipExpected("list workspace permissions", "GET /v1/workspaces/:workspace_id/permissions", rbacFeatureGate, func() error {
 		_, _, err := r.management.ListPermissions(r.ctx, r.workspaceID)
 		return err
 	})
@@ -566,11 +600,11 @@ func (r *runner) runWorkspaceAccess() {
 		r.skip("reset workspace member permissions", "POST /v1/workspaces/:workspace_id/members/:member_id/permissions/reset", "disposable registered member was not created")
 		r.skip("remove workspace member", "DELETE /v1/workspaces/:workspace_id/members/:member_id", "disposable registered member was not created")
 	} else {
-		r.writeSkipKnown(
+		r.writeSkipExpected(
 			"update workspace member permissions",
 			"PUT /v1/workspaces/:workspace_id/members/:member_id/permissions",
 			"permission write endpoint not exercised in smoke",
-			[]string{"feature.rbac is not included"},
+			rbacFeatureGate,
 			func() error {
 				current, _, err := r.management.GetMemberPermissions(r.ctx, r.workspaceID, disposableMember.UserID)
 				if err != nil {
@@ -596,11 +630,11 @@ func (r *runner) runWorkspaceAccess() {
 				return err
 			},
 		)
-		r.writeSkipKnown(
+		r.writeSkipExpected(
 			"reset workspace member permissions",
 			"POST /v1/workspaces/:workspace_id/members/:member_id/permissions/reset",
 			"permission write endpoint not exercised in smoke",
-			[]string{"feature.rbac is not included"},
+			rbacFeatureGate,
 			func() error {
 				_, _, err := r.management.ResetMemberPermissions(r.ctx, r.workspaceID, disposableMember.UserID)
 				return err
@@ -709,7 +743,7 @@ func (r *runner) runGateway() {
 		return err
 	})
 	var keyID int64
-	r.writeSkipKnown("create gateway key", "POST /v1/gateway/keys", "gateway key write endpoint not exercised in smoke", []string{"quota.gateway_keys limit exceeded"}, func() error {
+	r.writeSkipExpected("create gateway key", "POST /v1/gateway/keys", "gateway key write endpoint not exercised in smoke", gatewayKeyQuotaGate, func() error {
 		key, _, err := r.management.CreateGatewayKey(r.ctx, &management.CreateGatewayKeyRequest{
 			WorkspaceID:    r.workspaceID,
 			Name:           smokeName("SDK Smoke Key"),
@@ -872,7 +906,7 @@ func (r *runner) runGateway() {
 		_, _, err := r.management.GetPayloadAccess(r.ctx, workspaceOpt)
 		return err
 	})
-	r.callSkipKnown("list payload logs", "GET /v1/gateway/payload-logs", []string{"enable request or response payload logging to view payload logs"}, func() error {
+	r.callSkipExpected("list payload logs", "GET /v1/gateway/payload-logs", payloadLogsFeatureGate, func() error {
 		logs, _, err := r.management.ListPayloadLogs(r.ctx, r.workspaceID, management.ListOptions{Limit: 5})
 		if err != nil {
 			return err
@@ -1443,7 +1477,7 @@ func (r *runner) runFinancial() {
 		dailyLimit := positiveLimitOrDefault(limit.DailyLimit)
 		weeklyLimit := positiveLimitOrDefault(limit.WeeklyLimit)
 		monthlyLimit := positiveLimitOrDefault(limit.MonthlyLimit)
-		r.writeSkipKnown("update user spending limit", "PATCH /v1/workspaces/:workspace_id/governance/financial/spending-limits/users/:user_id", "financial write endpoint not exercised in smoke", []string{"feature.team_budget_controls is not included"}, func() error {
+		r.writeSkipExpected("update user spending limit", "PATCH /v1/workspaces/:workspace_id/governance/financial/spending-limits/users/:user_id", "financial write endpoint not exercised in smoke", teamBudgetFeatureGate, func() error {
 			_, _, err := r.management.UpdateUserSpendingLimit(r.ctx, r.workspaceID, limit.UserID, &management.UpdateUserSpendingLimitRequest{
 				DailyLimit: &dailyLimit, WeeklyLimit: &weeklyLimit, MonthlyLimit: &monthlyLimit,
 			})
@@ -1679,13 +1713,21 @@ func (r *runner) call(name, contract string, fn func() error) {
 	r.recordErr(name, contract, fn())
 }
 
-func (r *runner) callSkipKnown(name, contract string, known []string, fn func() error) {
+func (r *runner) callSkipExpected(name, contract string, expected expectedAPIError, fn func() error) {
 	err := fn()
-	if err != nil && containsAny(err.Error(), known) {
+	if expected.matches(err) {
 		r.skip(name, contract, err.Error())
 		return
 	}
 	r.recordErr(name, contract, err)
+}
+
+func (expected expectedAPIError) matches(err error) bool {
+	var apiErr *owlvigil.APIError
+	return errors.As(err, &apiErr) &&
+		apiErr.StatusCode == expected.statusCode &&
+		apiErr.Code == expected.code &&
+		strings.Contains(apiErr.Message, expected.messageContains)
 }
 
 func (r *runner) write(name, contract, reason string, fn func() error) {
@@ -1720,12 +1762,12 @@ func (r *runner) configuredCall(name, contract string, environmentNames []string
 	r.call(name, contract, func() error { return fn(values) })
 }
 
-func (r *runner) writeSkipKnown(name, contract, reason string, known []string, fn func() error) {
+func (r *runner) writeSkipExpected(name, contract, reason string, expected expectedAPIError, fn func() error) {
 	if !r.writes {
 		r.skip(name, contract, reason)
 		return
 	}
-	r.callSkipKnown(name, contract, known, fn)
+	r.callSkipExpected(name, contract, expected, fn)
 }
 
 func (r *runner) writeControlled(name, contract, reason string, allowedStatuses []int, fn func() error) {
@@ -1917,14 +1959,4 @@ func maskToken(token string) string {
 
 func smokeName(prefix string) string {
 	return fmt.Sprintf("%s %d", prefix, time.Now().UnixNano())
-}
-
-func containsAny(value string, needles []string) bool {
-	value = strings.ToLower(value)
-	for _, needle := range needles {
-		if strings.Contains(value, strings.ToLower(needle)) {
-			return true
-		}
-	}
-	return false
 }
