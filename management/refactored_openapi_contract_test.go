@@ -464,6 +464,27 @@ func TestClient_UpdateProvider_SendsWorkspaceInQueryAndBody(t *testing.T) {
 	)
 }
 
+func TestClient_UpdateProvider_RejectsMismatchedWorkspaceID(t *testing.T) {
+	t.Parallel()
+
+	client, requests := newManagementContractClient(t, `{}`)
+	name := "Updated"
+	req := &management.UpdateProviderRequest{WorkspaceID: 8, Name: &name}
+
+	got, meta, err := client.UpdateProvider(t.Context(), 7, 22, req)
+	if err == nil || !strings.Contains(err.Error(), "request workspace_id 8 does not match workspaceID 7") {
+		t.Fatalf("UpdateProvider(7, 22, %+v) error = %v, want workspace mismatch", req, err)
+	}
+	if got != nil || meta != nil {
+		t.Errorf("UpdateProvider(7, 22, %+v) = (%+v, %+v), want nil results", req, got, meta)
+	}
+	select {
+	case request := <-requests:
+		t.Errorf("UpdateProvider(7, 22, %+v) sent request %+v, want no HTTP request", req, request)
+	default:
+	}
+}
+
 func TestClient_CreateGatewayKey_UsesRefactoredOpenAPIContract(t *testing.T) {
 	t.Parallel()
 
