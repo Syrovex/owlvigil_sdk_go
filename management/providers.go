@@ -2,6 +2,7 @@ package management
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -119,6 +120,13 @@ func (c *Client) UpdateProvider(ctx context.Context, workspaceID, providerID int
 	query := url.Values{"workspace_id": {strconv.FormatInt(workspaceID, 10)}}
 	path := "/gateway/providers/" + strconv.FormatInt(providerID, 10)
 	body := req
+	if req != nil && req.WorkspaceID != 0 && req.WorkspaceID != workspaceID {
+		return nil, nil, fmt.Errorf(
+			"request workspace_id %d does not match workspaceID %d",
+			req.WorkspaceID,
+			workspaceID,
+		)
+	}
 	if req != nil && req.WorkspaceID == 0 {
 		copyRequest := *req
 		copyRequest.WorkspaceID = workspaceID
