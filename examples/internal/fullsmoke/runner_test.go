@@ -206,6 +206,55 @@ func TestCurrentUserProfileUpdateRequestUsesUsername(t *testing.T) {
 	}
 }
 
+func TestRunnerCallSkipExpectedRequiresExactAPIError(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+		code       string
+		wantStatus string
+	}{
+		{
+			name:       "documented feature gate is skipped",
+			statusCode: http.StatusPaymentRequired,
+			code:       "upgrade_required",
+			wantStatus: "SKIP",
+		},
+		{
+			name:       "server error with matching message fails",
+			statusCode: http.StatusInternalServerError,
+			code:       "upstream_error",
+			wantStatus: "FAIL",
+		},
+		{
+			name:       "unexpected code with matching status and message fails",
+			statusCode: http.StatusPaymentRequired,
+			code:       "invalid_request",
+			wantStatus: "FAIL",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &runner{}
+			r.callSkipExpected(
+				"list workspace audit logs",
+				"GET /v1/workspaces/:workspace_id/audit-logs",
+				auditLogsFeatureGate,
+				func() error {
+					return &owlvigil.APIError{
+						StatusCode: tt.statusCode,
+						Code:       tt.code,
+						Message:    "feature.audit_logs is not included because entitlement lookup failed",
+					}
+				},
+			)
+
+			if len(r.steps) != 1 || r.steps[0].Status != tt.wantStatus {
+				t.Fatalf("steps = %+v, want one %s", r.steps, tt.wantStatus)
+			}
+		})
+	}
+}
+
 func TestRunner_DoesNotCreateSmokeResourcesWhenWritesAreDisabled(t *testing.T) {
 	var mutations atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
