@@ -12,7 +12,7 @@ environment-file loader is in `examples/internal/envfile`. Keep API guides in
 
 ## Build, Test, and Development Commands
 
-Use Go 1.25.5 or later, as declared in `go.mod`.
+Use Go 1.25.12 or later, as declared in `go.mod`.
 
 ```bash
 go test ./...                         # run all unit and contract tests

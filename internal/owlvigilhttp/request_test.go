@@ -78,7 +78,7 @@ func TestClientDo_DoesNotRetryMutationWithoutIdempotencyKey(t *testing.T) {
 	t.Parallel()
 
 	var attempts atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		attempts.Add(1)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		_, _ = w.Write([]byte(`{"code":"unavailable","message":"try again"}`))
@@ -102,7 +102,7 @@ func TestClientDo_DoesNotRetryMutationWithoutIdempotencyKey(t *testing.T) {
 func TestClientDoAPIErrorRedactsSecret(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"request_id":"req_bad","code":"bad_secret","message":"token ov_sk_123456789 leaked"}`))
 	}))
@@ -207,7 +207,7 @@ func TestClientDo_APIErrorRedactsDynamicAndRequestSecrets(t *testing.T) {
 func TestClientDoContextCanceled(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		<-r.Context().Done()
 	}))
 	defer server.Close()

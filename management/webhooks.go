@@ -120,6 +120,7 @@ type WebhookEvent struct {
 	Type string `json:"type,omitempty"`
 }
 
+// UnmarshalJSON accepts numeric and string event IDs and populates legacy aliases.
 func (e *WebhookEvent) UnmarshalJSON(data []byte) error {
 	type alias WebhookEvent
 	var raw struct {

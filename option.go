@@ -14,10 +14,13 @@ import (
 const (
 	// DefaultGatewayBaseURL deliberately omits /v1 because Gateway client
 	// methods include their versioned paths.
-	DefaultGatewayBaseURL    = "https://gateway.owlvigil.com"
+	DefaultGatewayBaseURL = "https://gateway.owlvigil.com"
+	// DefaultManagementBaseURL is the production Management API base URL.
 	DefaultManagementBaseURL = "https://api.owlvigil.com/v1"
-	DefaultOAuthBaseURL      = "https://open.owlvigil.com"
-	DefaultHTTPTimeout       = 60 * time.Second
+	// DefaultOAuthBaseURL is the production OAuth API base URL.
+	DefaultOAuthBaseURL = "https://open.owlvigil.com"
+	// DefaultHTTPTimeout is the default timeout for SDK HTTP requests.
+	DefaultHTTPTimeout = 60 * time.Second
 )
 
 // Environment represents the API environment.
@@ -145,7 +148,7 @@ func WithEnvironment(env Environment) Option {
 func WithEnvironmentFromEnv() Option {
 	env := os.Getenv("OWLVIGIL_ENV")
 	if env == "" {
-		return func(c *Config) {} // noop, use default
+		return func(*Config) {} // No-op; use the default environment.
 	}
 	return WithEnvironment(Environment(env))
 }

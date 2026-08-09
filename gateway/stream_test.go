@@ -55,7 +55,7 @@ func TestCreateChatCompletionStream(t *testing.T) {
 func TestCreateStreamHTTPError(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write([]byte(`{"request_id":"req_stream","code":"unauthorized","message":"bad key"}`))
 	}))
@@ -76,7 +76,7 @@ func TestCreateStreamHTTPError_RedactsDynamicCredential(t *testing.T) {
 	t.Parallel()
 
 	const dynamicKey = "dynamic_gateway_key_123456"
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write([]byte(`{"code":"invalid_dynamic_gateway_key_123456","message":"bad dynamic_gateway_key_123456"}`))
 	}))

@@ -220,6 +220,7 @@ type ActivityRecord struct {
 	CreatedAt   string `json:"created_at,omitempty"`
 }
 
+// UnmarshalJSON accepts numeric and string activity IDs and populates legacy aliases.
 func (a *ActivityRecord) UnmarshalJSON(data []byte) error {
 	type alias ActivityRecord
 	var raw struct {

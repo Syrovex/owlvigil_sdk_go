@@ -39,7 +39,7 @@ func TestUserInfo(t *testing.T) {
 func TestUserInfoError(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write([]byte(`{"error":"invalid_token"}`))
 	}))
@@ -59,7 +59,7 @@ func TestUserInfoError(t *testing.T) {
 func TestUserInfo_RejectsOversizedResponse(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(strings.Repeat("x", 2<<20)))
 	}))
 	t.Cleanup(server.Close)

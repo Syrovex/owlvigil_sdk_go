@@ -1,4 +1,5 @@
 .DS_Store
+.idea/
 .env
 bin/
 dist/
@@ -7,3 +8,4 @@ coverage.out
 vendor/
 examples/multi-environment/multi-environment
 demo/
+memory/

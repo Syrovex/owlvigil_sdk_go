@@ -58,6 +58,7 @@ type Order struct {
 	SessionID string `json:"session_id,omitempty"`
 }
 
+// UnmarshalJSON accepts numeric and string order IDs and populates legacy aliases.
 func (o *Order) UnmarshalJSON(data []byte) error {
 	type alias Order
 	var raw struct {

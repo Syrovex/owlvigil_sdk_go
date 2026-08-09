@@ -1,0 +1,17 @@
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - revive
+
+issues:
+  exclude-dirs:
+    - demo
+  exclude-use-default: false
+  exclude-rules:
+    # Closing an HTTP response body after it has been fully read cannot alter
+    # the decoded SDK result. These sites intentionally use deferred cleanup.
+    - linters:
+        - errcheck
+      text: "Error return value of .*\\.Close"

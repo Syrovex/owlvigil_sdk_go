@@ -13,6 +13,10 @@
   ID header support, and response-preserving action variants.
 - Added a 141-operation smoke use-case catalog and a cross-repository alignment
   gate.
+- Restricted webhook smoke mutations to events created for the temporary
+  endpoint and matched expected API failures by status, code, and message.
+- Added public CI, security reporting, contribution guidance, and stricter API
+  documentation checks.
 
 ## v0.2.0 (2026-07-06)
 

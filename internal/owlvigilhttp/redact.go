@@ -1,3 +1,4 @@
+// Package owlvigilhttp provides shared HTTP transport behavior for the SDK.
 package owlvigilhttp
 
 import (

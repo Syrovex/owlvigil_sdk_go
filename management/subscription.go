@@ -43,6 +43,7 @@ type Plan struct {
 	Metadata             map[string]string `json:"metadata,omitempty"`
 }
 
+// UnmarshalJSON accepts current and legacy plan feature representations.
 func (p *Plan) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		ID                   json.RawMessage   `json:"id"`

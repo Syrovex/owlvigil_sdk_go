@@ -26,6 +26,7 @@ type TopupPlan struct {
 	Description string  `json:"description,omitempty"`
 }
 
+// UnmarshalJSON accepts numeric and string top-up plan IDs.
 func (p *TopupPlan) UnmarshalJSON(data []byte) error {
 	type alias TopupPlan
 	var raw struct {
@@ -71,6 +72,7 @@ type Topup struct {
 	OrderID string `json:"order_id,omitempty"`
 }
 
+// UnmarshalJSON accepts numeric and string top-up IDs and populates OrderID.
 func (t *Topup) UnmarshalJSON(data []byte) error {
 	type alias Topup
 	var raw struct {

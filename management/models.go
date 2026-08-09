@@ -38,6 +38,7 @@ type Model struct {
 	Pricing       map[string]float64 `json:"pricing,omitempty"`
 }
 
+// UnmarshalJSON accepts numeric and string model IDs and populates legacy aliases.
 func (m *Model) UnmarshalJSON(data []byte) error {
 	type alias Model
 	var raw struct {
@@ -82,6 +83,7 @@ type Route struct {
 	FallbackEnabled bool     `json:"fallback_enabled,omitempty"`
 }
 
+// UnmarshalJSON accepts numeric and string route IDs and populates legacy aliases.
 func (r *Route) UnmarshalJSON(data []byte) error {
 	type alias Route
 	var raw struct {

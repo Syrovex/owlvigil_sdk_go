@@ -161,6 +161,7 @@ type Invoice struct {
 	DownloadURL string  `json:"download_url,omitempty"`
 }
 
+// UnmarshalJSON accepts numeric and string invoice IDs and populates legacy aliases.
 func (i *Invoice) UnmarshalJSON(data []byte) error {
 	type alias Invoice
 	var raw struct {

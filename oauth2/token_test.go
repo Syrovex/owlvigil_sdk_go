@@ -93,7 +93,7 @@ func TestTokenFlows(t *testing.T) {
 func TestTokenOAuthErrorRedactsSecrets(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write([]byte(`{"error":"invalid_client","error_description":"secret client_secret_123456 is invalid"}`))
 	}))
@@ -118,7 +118,7 @@ func TestTokenOAuthErrorRedactsSecrets(t *testing.T) {
 func TestExchange_RejectsOversizedResponse(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(strings.Repeat("x", 2<<20)))
 	}))
 	t.Cleanup(server.Close)

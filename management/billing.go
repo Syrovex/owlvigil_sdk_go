@@ -28,6 +28,7 @@ type BillingOverview struct {
 	DefaultPaymentMethod *PaymentMethod `json:"default_payment_method,omitempty"`
 }
 
+// UnmarshalJSON accepts both object and numeric balance representations.
 func (b *BillingOverview) UnmarshalJSON(data []byte) error {
 	type alias BillingOverview
 	var raw struct {

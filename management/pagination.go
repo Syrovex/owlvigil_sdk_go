@@ -26,6 +26,7 @@ type ListResponse[T any] struct {
 	PageInfo    PageInfo          `json:"page_info"`
 }
 
+// UnmarshalJSON accepts both a bare item array and the paginated object form.
 func (r *ListResponse[T]) UnmarshalJSON(data []byte) error {
 	var items []T
 	if err := json.Unmarshal(data, &items); err == nil {

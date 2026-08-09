@@ -1,5 +1,9 @@
 # owlvigil-go
 
+[![CI](https://github.com/Syrovex/owlvigil_sdk_go/actions/workflows/test.yml/badge.svg)](https://github.com/Syrovex/owlvigil_sdk_go/actions/workflows/test.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/Syrovex/owlvigil_sdk_go.svg)](https://pkg.go.dev/github.com/Syrovex/owlvigil_sdk_go)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Go SDK for OwlVigil Gateway model calls and Open API management workflows.
 
 Gateway model calls use `https://gateway.owlvigil.com` with a Gateway key. OpenAPI Management calls use `https://api.owlvigil.com/v1` with a scoped service-account API key.
@@ -125,3 +129,10 @@ surfaces. Do not run `examples/openapi-smoke` against a shared workspace: it
 intentionally creates, updates, and deletes test resources.
 
 The SDK is HTTP-only. It does not import OwlVigil dashboard/backend code and does not connect directly to databases, Redis, queues, or server-side infrastructure.
+
+## Community and security
+
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+- Report vulnerabilities using the process in [SECURITY.md](SECURITY.md).
+- Participation is governed by [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+- Releases follow semantic versioning and are documented in [CHANGELOG.md](CHANGELOG.md).

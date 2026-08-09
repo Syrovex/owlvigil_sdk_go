@@ -1,3 +1,4 @@
+// Package sse parses server-sent event streams used by streaming SDK methods.
 package sse
 
 import (
