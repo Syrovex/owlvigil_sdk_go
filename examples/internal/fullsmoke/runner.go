@@ -22,6 +22,7 @@ const (
 	defaultScope             = "workspace:read workspace:write gateway:read gateway:write usage:read billing:read billing:write webhook:read webhook:write profile:read profile:write support:write notifications:read notifications:write invites:read invites:write audit_logs:read teams:read teams:write members:read members:write rbac:read rbac:write financial:read financial:write policies:read policies:write"
 	cleanupTimeout           = 15 * time.Second
 	managementOperationCount = 141
+	maxWebhookRetryAttempts  = 5
 )
 
 type step struct {
@@ -31,39 +32,11 @@ type step struct {
 	Error    string
 }
 
-type expectedAPIError struct {
+type apiErrorExpectation struct {
 	statusCode      int
 	code            string
 	messageContains string
 }
-
-var (
-	auditLogsFeatureGate = expectedAPIError{
-		statusCode:      http.StatusPaymentRequired,
-		code:            "upgrade_required",
-		messageContains: "feature.audit_logs is not included",
-	}
-	rbacFeatureGate = expectedAPIError{
-		statusCode:      http.StatusPaymentRequired,
-		code:            "upgrade_required",
-		messageContains: "feature.rbac is not included",
-	}
-	payloadLogsFeatureGate = expectedAPIError{
-		statusCode:      http.StatusForbidden,
-		code:            "forbidden",
-		messageContains: "enable request or response payload logging to view payload logs",
-	}
-	teamBudgetFeatureGate = expectedAPIError{
-		statusCode:      http.StatusPaymentRequired,
-		code:            "upgrade_required",
-		messageContains: "feature.team_budget_controls is not included",
-	}
-	gatewayKeyQuotaGate = expectedAPIError{
-		statusCode:      http.StatusPaymentRequired,
-		code:            "quota_exceeded",
-		messageContains: "quota.gateway_keys limit exceeded",
-	}
-)
 
 type runner struct {
 	ctx          context.Context
@@ -357,7 +330,7 @@ func (r *runner) runWorkspaceAccess() {
 		_, _, err := r.management.ListWorkspaceActivity(r.ctx, r.workspaceID, management.ListOptions{Limit: 5})
 		return err
 	})
-	r.callSkipExpected("list workspace audit logs", "GET /v1/workspaces/:workspace_id/audit-logs", auditLogsFeatureGate, func() error {
+	r.callSkipKnown("list workspace audit logs", "GET /v1/workspaces/:workspace_id/audit-logs", expectedUpgradeRequired("feature.audit_logs is not included"), func() error {
 		logs, _, err := r.management.ListAuditLogs(r.ctx, r.workspaceID, management.AuditLogListOptions{Limit: 5})
 		if err != nil {
 			return err
@@ -474,7 +447,7 @@ func (r *runner) runWorkspaceAccess() {
 		}
 		return nil
 	})
-	r.callSkipExpected("get member role options", "GET /v1/workspaces/:workspace_id/members/role-options", rbacFeatureGate, func() error {
+	r.callSkipKnown("get member role options", "GET /v1/workspaces/:workspace_id/members/role-options", expectedUpgradeRequired("feature.rbac is not included"), func() error {
 		_, _, err := r.management.ListRoleOptions(r.ctx, r.workspaceID)
 		return err
 	})
@@ -548,7 +521,7 @@ func (r *runner) runWorkspaceAccess() {
 	}
 
 	var roleForGetID int64
-	r.callSkipExpected("list workspace roles", "GET /v1/workspaces/:workspace_id/roles", rbacFeatureGate, func() error {
+	r.callSkipKnown("list workspace roles", "GET /v1/workspaces/:workspace_id/roles", expectedUpgradeRequired("feature.rbac is not included"), func() error {
 		roles, _, err := r.management.ListRoles(r.ctx, r.workspaceID, management.ListOptions{Limit: 5})
 		if err != nil {
 			return err
@@ -570,7 +543,7 @@ func (r *runner) runWorkspaceAccess() {
 		return err
 	})
 	if roleForGetID > 0 {
-		r.callSkipExpected("get workspace role", "GET /v1/workspaces/:workspace_id/roles/:role_id", rbacFeatureGate, func() error {
+		r.callSkipKnown("get workspace role", "GET /v1/workspaces/:workspace_id/roles/:role_id", expectedUpgradeRequired("feature.rbac is not included"), func() error {
 			_, _, err := r.management.GetRole(r.ctx, r.workspaceID, roleForGetID)
 			return err
 		})
@@ -591,7 +564,7 @@ func (r *runner) runWorkspaceAccess() {
 		r.skip("update workspace role", "PATCH /v1/workspaces/:workspace_id/roles/:role_id", "temporary role was not created")
 		r.skip("delete workspace role", "DELETE /v1/workspaces/:workspace_id/roles/:role_id", "temporary role was not created")
 	}
-	r.callSkipExpected("list workspace permissions", "GET /v1/workspaces/:workspace_id/permissions", rbacFeatureGate, func() error {
+	r.callSkipKnown("list workspace permissions", "GET /v1/workspaces/:workspace_id/permissions", expectedUpgradeRequired("feature.rbac is not included"), func() error {
 		_, _, err := r.management.ListPermissions(r.ctx, r.workspaceID)
 		return err
 	})
@@ -600,11 +573,11 @@ func (r *runner) runWorkspaceAccess() {
 		r.skip("reset workspace member permissions", "POST /v1/workspaces/:workspace_id/members/:member_id/permissions/reset", "disposable registered member was not created")
 		r.skip("remove workspace member", "DELETE /v1/workspaces/:workspace_id/members/:member_id", "disposable registered member was not created")
 	} else {
-		r.writeSkipExpected(
+		r.writeSkipKnown(
 			"update workspace member permissions",
 			"PUT /v1/workspaces/:workspace_id/members/:member_id/permissions",
 			"permission write endpoint not exercised in smoke",
-			rbacFeatureGate,
+			expectedUpgradeRequired("feature.rbac is not included"),
 			func() error {
 				current, _, err := r.management.GetMemberPermissions(r.ctx, r.workspaceID, disposableMember.UserID)
 				if err != nil {
@@ -630,11 +603,11 @@ func (r *runner) runWorkspaceAccess() {
 				return err
 			},
 		)
-		r.writeSkipExpected(
+		r.writeSkipKnown(
 			"reset workspace member permissions",
 			"POST /v1/workspaces/:workspace_id/members/:member_id/permissions/reset",
 			"permission write endpoint not exercised in smoke",
-			rbacFeatureGate,
+			expectedUpgradeRequired("feature.rbac is not included"),
 			func() error {
 				_, _, err := r.management.ResetMemberPermissions(r.ctx, r.workspaceID, disposableMember.UserID)
 				return err
@@ -743,7 +716,7 @@ func (r *runner) runGateway() {
 		return err
 	})
 	var keyID int64
-	r.writeSkipExpected("create gateway key", "POST /v1/gateway/keys", "gateway key write endpoint not exercised in smoke", gatewayKeyQuotaGate, func() error {
+	r.writeSkipKnown("create gateway key", "POST /v1/gateway/keys", "gateway key write endpoint not exercised in smoke", expectedQuotaExceeded("quota.gateway_keys limit exceeded"), func() error {
 		key, _, err := r.management.CreateGatewayKey(r.ctx, &management.CreateGatewayKeyRequest{
 			WorkspaceID:    r.workspaceID,
 			Name:           smokeName("SDK Smoke Key"),
@@ -906,7 +879,7 @@ func (r *runner) runGateway() {
 		_, _, err := r.management.GetPayloadAccess(r.ctx, workspaceOpt)
 		return err
 	})
-	r.callSkipExpected("list payload logs", "GET /v1/gateway/payload-logs", payloadLogsFeatureGate, func() error {
+	r.callSkipKnown("list payload logs", "GET /v1/gateway/payload-logs", expectedForbidden("enable request or response payload logging to view payload logs"), func() error {
 		logs, _, err := r.management.ListPayloadLogs(r.ctx, r.workspaceID, management.ListOptions{Limit: 5})
 		if err != nil {
 			return err
@@ -1477,7 +1450,7 @@ func (r *runner) runFinancial() {
 		dailyLimit := positiveLimitOrDefault(limit.DailyLimit)
 		weeklyLimit := positiveLimitOrDefault(limit.WeeklyLimit)
 		monthlyLimit := positiveLimitOrDefault(limit.MonthlyLimit)
-		r.writeSkipExpected("update user spending limit", "PATCH /v1/workspaces/:workspace_id/governance/financial/spending-limits/users/:user_id", "financial write endpoint not exercised in smoke", teamBudgetFeatureGate, func() error {
+		r.writeSkipKnown("update user spending limit", "PATCH /v1/workspaces/:workspace_id/governance/financial/spending-limits/users/:user_id", "financial write endpoint not exercised in smoke", expectedUpgradeRequired("feature.team_budget_controls is not included"), func() error {
 			_, _, err := r.management.UpdateUserSpendingLimit(r.ctx, r.workspaceID, limit.UserID, &management.UpdateUserSpendingLimitRequest{
 				DailyLimit: &dailyLimit, WeeklyLimit: &weeklyLimit, MonthlyLimit: &monthlyLimit,
 			})
@@ -1572,6 +1545,8 @@ func (r *runner) runPolicies() {
 func (r *runner) runWebhooks() {
 	workspaceOpt := owlvigil.WithWorkspaceID(r.workspaceID)
 	var endpointID int64
+	var testedEvent *management.WebhookEvent
+	var endpointEvents []management.WebhookEvent
 	r.call("list webhook endpoints", "GET /v1/webhook-endpoints", func() error {
 		_, _, err := r.management.ListWebhookEndpoints(r.ctx, management.ListOptions{Limit: 5}, workspaceOpt)
 		return err
@@ -1622,12 +1597,23 @@ func (r *runner) runWebhooks() {
 			if _, err := r.management.EnableWebhookEndpoint(r.ctx, endpointID, workspaceOpt); err != nil {
 				return fmt.Errorf("re-enable webhook endpoint before test: %w", err)
 			}
-			_, err := r.management.TestWebhookEndpoint(r.ctx, endpointID, workspaceOpt)
-			return err
+			event, _, err := r.management.TestWebhookEndpointWithResult(r.ctx, endpointID, workspaceOpt)
+			if err != nil {
+				return err
+			}
+			if event == nil {
+				return errors.New("test webhook endpoint returned nil event")
+			}
+			testedEvent = event
+			return nil
 		})
 		r.call("list endpoint webhook events", "GET /v1/webhook-endpoints/:endpoint_id/events", func() error {
-			_, _, err := r.management.ListEndpointEvents(r.ctx, endpointID, management.ListOptions{Limit: 5}, workspaceOpt)
-			return err
+			events, _, err := r.management.ListEndpointEvents(r.ctx, endpointID, management.ListOptions{Limit: 5}, workspaceOpt)
+			if err != nil {
+				return err
+			}
+			endpointEvents = append(endpointEvents[:0], events.Items...)
+			return nil
 		})
 	} else {
 		r.skip("get webhook endpoint", "GET /v1/webhook-endpoints/:endpoint_id", "webhook endpoint was not created")
@@ -1642,35 +1628,43 @@ func (r *runner) runWebhooks() {
 		_, _, err := r.management.ListWebhookEventTypes(r.ctx)
 		return err
 	})
-	var eventID string
-	var eventIDInt int
 	r.call("list webhook events", "GET /v1/webhook-events", func() error {
-		events, _, err := r.management.ListWebhookEvents(r.ctx, management.ListOptions{Limit: 5}, workspaceOpt)
-		if err != nil {
-			return err
-		}
-		if len(events.Items) > 0 {
-			eventID = events.Items[0].ID
-			eventIDInt, _ = strconv.Atoi(eventID)
-		}
-		if eventID == "" {
-			eventID = strings.TrimSpace(os.Getenv("OWLVIGIL_SMOKE_WEBHOOK_EVENT_ID"))
-			eventIDInt, _ = strconv.Atoi(eventID)
-		}
-		return nil
+		_, _, err := r.management.ListWebhookEvents(r.ctx, management.ListOptions{Limit: 5}, workspaceOpt)
+		return err
 	})
+
+	candidates := endpointEvents
+	if testedEvent != nil {
+		candidates = append([]management.WebhookEvent{*testedEvent}, candidates...)
+	}
+	eventID, eventOwned := firstWebhookEventID(candidates, endpointID)
+	retryEventID, retryOwned := firstRetryableWebhookEventID(candidates, endpointID)
+	configuredEventID := strings.TrimSpace(os.Getenv("OWLVIGIL_SMOKE_WEBHOOK_EVENT_ID"))
+	if eventID == "" {
+		eventID = configuredEventID
+	}
+	if retryEventID == "" {
+		retryEventID = configuredEventID
+	}
 	if eventID != "" {
 		r.call("get webhook event", "GET /v1/webhook-events/:event_id", func() error {
 			_, _, err := r.management.GetWebhookEvent(r.ctx, eventID, workspaceOpt)
 			return err
 		})
+	} else {
+		r.skip("get webhook event", "GET /v1/webhook-events/:event_id", "webhook events list returned no events")
+	}
+	if retryEventID != "" {
 		r.write("retry webhook event", "POST /v1/webhook-events/:event_id/retry", "webhook write endpoint not exercised in smoke", func() error {
-			event, _, err := r.management.RetryWebhookEventWithResult(r.ctx, eventID, workspaceOpt)
+			event, _, err := r.management.RetryWebhookEventWithResult(r.ctx, retryEventID, workspaceOpt)
 			if err != nil {
 				return err
 			}
 			if event == nil {
 				return errors.New("retry webhook event returned nil")
+			}
+			if retryOwned && event.EndpointID != endpointID {
+				return fmt.Errorf("retry webhook event endpoint ID = %d, want temporary endpoint %d", event.EndpointID, endpointID)
 			}
 			if !strings.EqualFold(strings.TrimSpace(event.Status), "pending") {
 				return fmt.Errorf(
@@ -1680,24 +1674,49 @@ func (r *runner) runWebhooks() {
 			}
 			return nil
 		})
+	} else {
+		r.skip("retry webhook event", "POST /v1/webhook-events/:event_id/retry", "no failed or dead webhook event with attempts below the retry limit")
+	}
+	if eventID != "" {
 		r.write("redeliver webhook event", "POST /v1/webhook-events/:event_id/redeliver", "webhook write endpoint not exercised in smoke", func() error {
-			_, err := r.management.RedeliverWebhookEvent(r.ctx, eventID, workspaceOpt)
-			return err
-		})
-		r.write("bulk redeliver webhook events", "POST /v1/webhook-events/bulk-redeliver", "webhook write endpoint not exercised in smoke", func() error {
-			_, err := r.management.BulkRedeliverWebhookEvents(r.ctx, &management.BulkRedeliverRequest{
-				WorkspaceID: r.workspaceID,
-				EndpointID:  &endpointID,
-				EventIDs:    []int{eventIDInt},
-				Limit:       10,
-			})
-			return err
+			event, _, err := r.management.RedeliverWebhookEventWithResult(r.ctx, eventID, workspaceOpt)
+			if err != nil {
+				return err
+			}
+			if event == nil {
+				return errors.New("redeliver webhook event returned nil")
+			}
+			if eventOwned && event.EndpointID != endpointID {
+				return fmt.Errorf("redeliver webhook event endpoint ID = %d, want temporary endpoint %d", event.EndpointID, endpointID)
+			}
+			return nil
 		})
 	} else {
-		r.skip("get webhook event", "GET /v1/webhook-events/:event_id", "webhook events list returned no events")
-		r.skip("retry webhook event", "POST /v1/webhook-events/:event_id/retry", "webhook events list returned no events")
-		r.skip("redeliver webhook event", "POST /v1/webhook-events/:event_id/redeliver", "webhook events list returned no events")
-		r.skip("bulk redeliver webhook events", "POST /v1/webhook-events/bulk-redeliver", "webhook events list returned no events")
+		r.skip("redeliver webhook event", "POST /v1/webhook-events/:event_id/redeliver", "temporary endpoint returned no events and OWLVIGIL_SMOKE_WEBHOOK_EVENT_ID is not set")
+	}
+	if eventOwned {
+		eventIDInt, err := strconv.Atoi(eventID)
+		if err != nil {
+			r.skip("bulk redeliver webhook events", "POST /v1/webhook-events/bulk-redeliver", fmt.Sprintf("temporary webhook event ID %q is not numeric: %v", eventID, err))
+		} else {
+			r.write("bulk redeliver webhook events", "POST /v1/webhook-events/bulk-redeliver", "webhook write endpoint not exercised in smoke", func() error {
+				events, _, err := r.management.BulkRedeliverWebhookEventsWithResult(r.ctx, &management.BulkRedeliverRequest{
+					WorkspaceID: r.workspaceID,
+					EndpointID:  &endpointID,
+					EventIDs:    []int{eventIDInt},
+					Limit:       10,
+				})
+				if err != nil {
+					return err
+				}
+				if events == nil || len(events.Items) == 0 {
+					return errors.New("bulk redeliver webhook events returned no events")
+				}
+				return nil
+			})
+		}
+	} else {
+		r.skip("bulk redeliver webhook events", "POST /v1/webhook-events/bulk-redeliver", "temporary endpoint returned no event eligible for bulk redelivery")
 	}
 	if endpointID > 0 {
 		r.cleanup("delete webhook endpoint", "DELETE /v1/webhook-endpoints/:endpoint_id", func(ctx context.Context) error {
@@ -1709,25 +1728,50 @@ func (r *runner) runWebhooks() {
 	}
 }
 
+func firstWebhookEventID(events []management.WebhookEvent, endpointID int64) (string, bool) {
+	if endpointID <= 0 {
+		return "", false
+	}
+	for _, event := range events {
+		if event.EndpointID != endpointID {
+			continue
+		}
+		if eventID := strings.TrimSpace(event.ID); eventID != "" {
+			return eventID, true
+		}
+	}
+	return "", false
+}
+
+func firstRetryableWebhookEventID(events []management.WebhookEvent, endpointID int64) (string, bool) {
+	if endpointID <= 0 {
+		return "", false
+	}
+	for _, event := range events {
+		if event.EndpointID != endpointID {
+			continue
+		}
+		status := strings.ToLower(strings.TrimSpace(event.Status))
+		if (status == "failed" || status == "dead") && event.Attempts < maxWebhookRetryAttempts {
+			if eventID := strings.TrimSpace(event.ID); eventID != "" {
+				return eventID, true
+			}
+		}
+	}
+	return "", false
+}
+
 func (r *runner) call(name, contract string, fn func() error) {
 	r.recordErr(name, contract, fn())
 }
 
-func (r *runner) callSkipExpected(name, contract string, expected expectedAPIError, fn func() error) {
+func (r *runner) callSkipKnown(name, contract string, expected apiErrorExpectation, fn func() error) {
 	err := fn()
 	if expected.matches(err) {
 		r.skip(name, contract, err.Error())
 		return
 	}
 	r.recordErr(name, contract, err)
-}
-
-func (expected expectedAPIError) matches(err error) bool {
-	var apiErr *owlvigil.APIError
-	return errors.As(err, &apiErr) &&
-		apiErr.StatusCode == expected.statusCode &&
-		apiErr.Code == expected.code &&
-		strings.Contains(apiErr.Message, expected.messageContains)
 }
 
 func (r *runner) write(name, contract, reason string, fn func() error) {
@@ -1762,12 +1806,12 @@ func (r *runner) configuredCall(name, contract string, environmentNames []string
 	r.call(name, contract, func() error { return fn(values) })
 }
 
-func (r *runner) writeSkipExpected(name, contract, reason string, expected expectedAPIError, fn func() error) {
+func (r *runner) writeSkipKnown(name, contract, reason string, expected apiErrorExpectation, fn func() error) {
 	if !r.writes {
 		r.skip(name, contract, reason)
 		return
 	}
-	r.callSkipExpected(name, contract, expected, fn)
+	r.callSkipKnown(name, contract, expected, fn)
 }
 
 func (r *runner) writeControlled(name, contract, reason string, allowedStatuses []int, fn func() error) {
@@ -1959,4 +2003,38 @@ func maskToken(token string) string {
 
 func smokeName(prefix string) string {
 	return fmt.Sprintf("%s %d", prefix, time.Now().UnixNano())
+}
+
+func expectedUpgradeRequired(messageContains string) apiErrorExpectation {
+	return apiErrorExpectation{
+		statusCode:      http.StatusPaymentRequired,
+		code:            "upgrade_required",
+		messageContains: messageContains,
+	}
+}
+
+func expectedForbidden(messageContains string) apiErrorExpectation {
+	return apiErrorExpectation{
+		statusCode:      http.StatusForbidden,
+		code:            "forbidden",
+		messageContains: messageContains,
+	}
+}
+
+func expectedQuotaExceeded(messageContains string) apiErrorExpectation {
+	return apiErrorExpectation{
+		statusCode:      http.StatusPaymentRequired,
+		code:            "quota_exceeded",
+		messageContains: messageContains,
+	}
+}
+
+func (expected apiErrorExpectation) matches(err error) bool {
+	var apiErr *owlvigil.APIError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+	return apiErr.StatusCode == expected.statusCode &&
+		strings.EqualFold(strings.TrimSpace(apiErr.Code), expected.code) &&
+		strings.Contains(strings.ToLower(apiErr.Message), strings.ToLower(expected.messageContains))
 }

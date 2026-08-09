@@ -2000,15 +2000,15 @@ func TestFinancialResponseTypes_UnmarshalRefactoredOpenAPIFields(t *testing.T) {
 	}
 
 	t.Run("clears a decoded current cap instead of restoring the legacy limit", func(t *testing.T) {
-		var cap management.BudgetCap
+		var budgetCap management.BudgetCap
 		mustUnmarshalJSON(t, `{
 			"scope_type":"workspace",
 			"enabled":true,
 			"monthly_amount":100
-		}`, &cap)
-		cap.MonthlyAmount = 0
+		}`, &budgetCap)
+		budgetCap.MonthlyAmount = 0
 
-		got, err := json.Marshal(cap)
+		got, err := json.Marshal(budgetCap)
 		if err != nil {
 			t.Fatalf("json.Marshal(BudgetCap) error = %v", err)
 		}

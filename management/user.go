@@ -59,6 +59,8 @@ type UpdateUserProfileRequest struct {
 	ClearBalanceNotifyThreshold bool `json:"-"`
 
 	// Name is retained as a compatibility alias for Username.
+	//
+	// Deprecated: use Username. Name is serialized as username, not display name.
 	Name *string `json:"-"`
 }
 

@@ -4,11 +4,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -199,59 +201,202 @@ func TestCurrentUserProfileUpdateRequestUsesUsername(t *testing.T) {
 		t.Fatalf("unmarshal profile update request: %v", err)
 	}
 	if got := requestBody["username"]; got != profile.Username {
-		t.Errorf("username = %v, want %q", got, profile.Username)
+		t.Errorf("currentUserProfileUpdateRequest(%+v) username = %v, want %q", profile, got, profile.Username)
 	}
 	if got := requestBody["username"]; got == profile.Name {
-		t.Errorf("username = display name %q, want account username", profile.Name)
+		t.Errorf("currentUserProfileUpdateRequest(%+v) username = %v, want account username %q", profile, got, profile.Username)
 	}
 }
 
-func TestRunnerCallSkipExpectedRequiresExactAPIError(t *testing.T) {
+func TestFirstRetryableWebhookEventID(t *testing.T) {
+	const endpointID int64 = 101
+	events := []management.WebhookEvent{
+		{ID: "other-endpoint", EndpointID: 202, Status: "failed", Attempts: 1},
+		{ID: "delivered", EndpointID: endpointID, Status: "delivered", Attempts: 1},
+		{ID: "exhausted", EndpointID: endpointID, Status: "failed", Attempts: 5},
+		{ID: "retryable", EndpointID: endpointID, Status: "DEAD", Attempts: 4},
+		{ID: "later", EndpointID: endpointID, Status: "failed", Attempts: 1},
+	}
+
+	if got, ok := firstRetryableWebhookEventID(events, endpointID); !ok || got != "retryable" {
+		t.Errorf("firstRetryableWebhookEventID(%+v, %d) = (%q, %t), want (%q, true)", events, endpointID, got, ok, "retryable")
+	}
+	if got, ok := firstRetryableWebhookEventID(events[:3], endpointID); ok || got != "" {
+		t.Errorf("firstRetryableWebhookEventID(%+v, %d) = (%q, %t), want (\"\", false)", events[:3], endpointID, got, ok)
+	}
+}
+
+func TestRunner_CallSkipKnownRequiresMatchingAPIError(t *testing.T) {
+	expected := expectedUpgradeRequired("feature.audit_logs is not included")
 	tests := []struct {
 		name       string
-		statusCode int
-		code       string
+		err        error
 		wantStatus string
 	}{
 		{
-			name:       "documented feature gate is skipped",
-			statusCode: http.StatusPaymentRequired,
-			code:       "upgrade_required",
+			name: "matching API error is skipped",
+			err: &owlvigil.APIError{
+				StatusCode: http.StatusPaymentRequired,
+				Code:       "upgrade_required",
+				Message:    "feature.audit_logs is not included in the Team plan",
+			},
 			wantStatus: "SKIP",
 		},
 		{
-			name:       "server error with matching message fails",
-			statusCode: http.StatusInternalServerError,
-			code:       "upstream_error",
+			name: "same message with server error fails",
+			err: &owlvigil.APIError{
+				StatusCode: http.StatusInternalServerError,
+				Code:       "internal_error",
+				Message:    "feature.audit_logs is not included in the Team plan",
+			},
 			wantStatus: "FAIL",
 		},
 		{
-			name:       "unexpected code with matching status and message fails",
-			statusCode: http.StatusPaymentRequired,
-			code:       "invalid_request",
+			name: "matching status with different code fails",
+			err: &owlvigil.APIError{
+				StatusCode: http.StatusPaymentRequired,
+				Code:       "billing_error",
+				Message:    "feature.audit_logs is not included in the Team plan",
+			},
+			wantStatus: "FAIL",
+		},
+		{
+			name: "matching status and code with different message fails",
+			err: &owlvigil.APIError{
+				StatusCode: http.StatusPaymentRequired,
+				Code:       "upgrade_required",
+				Message:    "another feature is not included in the Team plan",
+			},
+			wantStatus: "FAIL",
+		},
+		{
+			name:       "plain error with matching text fails",
+			err:        errors.New("feature.audit_logs is not included in the Team plan"),
 			wantStatus: "FAIL",
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &runner{}
-			r.callSkipExpected(
-				"list workspace audit logs",
-				"GET /v1/workspaces/:workspace_id/audit-logs",
-				auditLogsFeatureGate,
-				func() error {
-					return &owlvigil.APIError{
-						StatusCode: tt.statusCode,
-						Code:       tt.code,
-						Message:    "feature.audit_logs is not included because entitlement lookup failed",
-					}
-				},
-			)
-
-			if len(r.steps) != 1 || r.steps[0].Status != tt.wantStatus {
-				t.Fatalf("steps = %+v, want one %s", r.steps, tt.wantStatus)
+			r.callSkipKnown("list workspace audit logs", "GET /v1/workspaces/:workspace_id/audit-logs", expected, func() error {
+				return tt.err
+			})
+			if len(r.steps) != 1 {
+				t.Fatalf("runner.callSkipKnown(%q) recorded %d steps, want 1", tt.name, len(r.steps))
+			}
+			if got := r.steps[0].Status; got != tt.wantStatus {
+				t.Errorf("runner.callSkipKnown(%q) status = %q, want %q", tt.name, got, tt.wantStatus)
 			}
 		})
+	}
+}
+
+func TestRunner_CallSkipKnownMatchesQuotaExceededCode(t *testing.T) {
+	r := &runner{}
+	r.callSkipKnown(
+		"create gateway key",
+		"POST /v1/gateway/keys",
+		expectedQuotaExceeded("quota.gateway_keys limit exceeded"),
+		func() error {
+			return &owlvigil.APIError{
+				StatusCode: http.StatusPaymentRequired,
+				Code:       "quota_exceeded",
+				Message:    "quota.gateway_keys limit exceeded for this workspace",
+			}
+		},
+	)
+
+	if len(r.steps) != 1 {
+		t.Fatalf("runner.callSkipKnown(quota_exceeded) recorded %d steps, want 1", len(r.steps))
+	}
+	if got := r.steps[0].Status; got != "SKIP" {
+		t.Errorf("runner.callSkipKnown(quota_exceeded) status = %q, want SKIP", got)
+	}
+}
+
+func TestRunner_WebhookMutationsUseTemporaryEndpointEvents(t *testing.T) {
+	t.Setenv("OWLVIGIL_SMOKE_WEBHOOK_URL", "https://example.com/sdk-smoke-webhook")
+
+	const (
+		workspaceID      int64 = 1
+		endpointID       int64 = 101
+		temporaryEventID       = "202"
+		otherEventID           = "999"
+	)
+	var retryEventID string
+	var redeliverEventID string
+	var bulkRequest management.BulkRedeliverRequest
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case req.Method == http.MethodGet && req.URL.Path == "/webhook-endpoints":
+			_, _ = w.Write([]byte(`{"items":[],"page_info":{}}`))
+		case req.Method == http.MethodPost && req.URL.Path == "/webhook-endpoints":
+			_, _ = w.Write([]byte(`{"id":101}`))
+		case req.Method == http.MethodGet && req.URL.Path == "/webhook-endpoints/101":
+			_, _ = w.Write([]byte(`{"id":101}`))
+		case req.Method == http.MethodPatch && req.URL.Path == "/webhook-endpoints/101":
+			_, _ = w.Write([]byte(`{"id":101}`))
+		case req.Method == http.MethodPost && (req.URL.Path == "/webhook-endpoints/101/enable" || req.URL.Path == "/webhook-endpoints/101/disable" || req.URL.Path == "/webhook-endpoints/101/rotate-secret"):
+			_, _ = w.Write([]byte(`{"id":101}`))
+		case req.Method == http.MethodPost && req.URL.Path == "/webhook-endpoints/101/test":
+			_, _ = w.Write([]byte(`{"id":"202","endpoint_id":101,"status":"failed","attempts":1}`))
+		case req.Method == http.MethodGet && req.URL.Path == "/webhook-endpoints/101/events":
+			_, _ = w.Write([]byte(`{"items":[{"id":"202","endpoint_id":101,"status":"failed","attempts":1}],"page_info":{}}`))
+		case req.Method == http.MethodGet && req.URL.Path == "/webhook-event-types":
+			_, _ = w.Write([]byte(`[]`))
+		case req.Method == http.MethodGet && req.URL.Path == "/webhook-events":
+			_, _ = w.Write([]byte(`{"items":[{"id":"999","endpoint_id":999,"status":"failed","attempts":1},{"id":"202","endpoint_id":101,"status":"failed","attempts":1}],"page_info":{}}`))
+		case req.Method == http.MethodGet && req.URL.Path == "/webhook-events/202":
+			_, _ = w.Write([]byte(`{"id":"202","endpoint_id":101,"status":"failed","attempts":1}`))
+		case req.Method == http.MethodPost && strings.HasPrefix(req.URL.Path, "/webhook-events/") && strings.HasSuffix(req.URL.Path, "/retry"):
+			retryEventID = strings.TrimSuffix(strings.TrimPrefix(req.URL.Path, "/webhook-events/"), "/retry")
+			_, _ = w.Write([]byte(`{"id":"202","endpoint_id":101,"status":"pending","attempts":2}`))
+		case req.Method == http.MethodPost && strings.HasPrefix(req.URL.Path, "/webhook-events/") && strings.HasSuffix(req.URL.Path, "/redeliver"):
+			redeliverEventID = strings.TrimSuffix(strings.TrimPrefix(req.URL.Path, "/webhook-events/"), "/redeliver")
+			_, _ = w.Write([]byte(`{"id":"202","endpoint_id":101,"status":"pending","attempts":2}`))
+		case req.Method == http.MethodPost && req.URL.Path == "/webhook-events/bulk-redeliver":
+			if err := json.NewDecoder(req.Body).Decode(&bulkRequest); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			_, _ = w.Write([]byte(`{"items":[{"id":"202","endpoint_id":101,"status":"pending"}],"page_info":{}}`))
+		case req.Method == http.MethodDelete && req.URL.Path == "/webhook-endpoints/101":
+			_, _ = w.Write([]byte(`{"message":"deleted"}`))
+		default:
+			http.Error(w, fmt.Sprintf("unexpected request: %s %s", req.Method, req.URL.Path), http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	r := &runner{
+		ctx: context.Background(),
+		management: management.NewClient(
+			owlvigil.WithBaseURL(server.URL),
+			owlvigil.WithoutRetry(),
+		),
+		workspaceID: workspaceID,
+		writes:      true,
+	}
+	r.runWebhooks()
+
+	if retryEventID != temporaryEventID {
+		t.Errorf("runWebhooks() retry event ID = %q, want temporary endpoint event %q; global first event was %q", retryEventID, temporaryEventID, otherEventID)
+	}
+	if redeliverEventID != temporaryEventID {
+		t.Errorf("runWebhooks() redeliver event ID = %q, want temporary endpoint event %q; global first event was %q", redeliverEventID, temporaryEventID, otherEventID)
+	}
+	if bulkRequest.EndpointID == nil || *bulkRequest.EndpointID != endpointID {
+		t.Errorf("runWebhooks() bulk endpoint ID = %v, want %d", bulkRequest.EndpointID, endpointID)
+	}
+	if got, want := bulkRequest.EventIDs, []int{202}; !slices.Equal(got, want) {
+		t.Errorf("runWebhooks() bulk event IDs = %v, want %v", got, want)
+	}
+	for _, result := range r.steps {
+		if result.Status == "FAIL" {
+			t.Errorf("runWebhooks() step %q failed: %s", result.Name, result.Error)
+		}
 	}
 }
 
