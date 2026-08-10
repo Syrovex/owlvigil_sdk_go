@@ -55,3 +55,4 @@ jobs:
           --volume "$PWD:/repo:ro"
           zricethezav/gitleaks:v8.28.0
           detect --source /repo --redact --no-banner
+          --gitleaks-ignore-path /repo/.gitleaksignore

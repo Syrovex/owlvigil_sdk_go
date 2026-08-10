@@ -1,0 +1,3 @@
+# Fixed dummy credentials used by redaction tests in the repository root commit.
+753ff3cbbd020fa6d5a2d0751673da55e3685d93:internal/owlvigilhttp/redact_test.go:generic-api-key:11
+753ff3cbbd020fa6d5a2d0751673da55e3685d93:internal/owlvigilhttp/request_test.go:generic-api-key:86
