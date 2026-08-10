@@ -912,32 +912,30 @@ func (r *runner) runBilling() {
 		_, _, err := r.management.GetBalanceForWorkspace(r.ctx, r.workspaceID)
 		return err
 	})
-	var planID, planInterval string
+	var planID, planInterval, planLookupID string
 	r.call("billing plans", "GET /v1/billing/plans", func() error {
 		plans, _, err := r.management.ListPlans(r.ctx, management.ListOptions{})
 		if err != nil {
 			return err
 		}
-		for _, plan := range plans.Items {
-			if plan.ForSale && plan.ID != "" && plan.Interval != "" {
-				planID = plan.ID
-				planInterval = plan.Interval
-				break
-			}
-		}
-		if planID == "" && len(plans.Items) > 0 {
-			planID = plans.Items[0].ID
-			planInterval = plans.Items[0].Interval
-		}
+		planID, planInterval = firstSaleableMonthlyPlan(plans.Items)
 		if planID == "" {
 			planID = strings.TrimSpace(os.Getenv("OWLVIGIL_SMOKE_PLAN_ID"))
 			planInterval = strings.TrimSpace(os.Getenv("OWLVIGIL_SMOKE_PLAN_INTERVAL"))
 		}
+		planLookupID = planID
+		if planLookupID == "" {
+			for _, plan := range plans.Items {
+				if planLookupID = strings.TrimSpace(plan.ID); planLookupID != "" {
+					break
+				}
+			}
+		}
 		return nil
 	})
-	if planID != "" {
+	if planLookupID != "" {
 		r.call("billing plan", "GET /v1/billing/plans/:plan_id", func() error {
-			_, _, err := r.management.GetPlan(r.ctx, planID)
+			_, _, err := r.management.GetPlan(r.ctx, planLookupID)
 			return err
 		})
 	} else {
@@ -1288,6 +1286,20 @@ func (r *runner) runBilling() {
 			return err
 		})
 	}
+}
+
+func firstSaleableMonthlyPlan(plans []management.Plan) (string, string) {
+	for _, plan := range plans {
+		planID := strings.TrimSpace(plan.ID)
+		if !plan.ForSale || planID == "" || plan.StripePriceIDMonthly == nil {
+			continue
+		}
+		if strings.TrimSpace(*plan.StripePriceIDMonthly) == "" {
+			continue
+		}
+		return planID, "monthly"
+	}
+	return "", ""
 }
 
 func (r *runner) runFinancial() {

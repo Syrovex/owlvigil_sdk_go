@@ -125,6 +125,53 @@ func TestStripePaymentMethodID(t *testing.T) {
 	}
 }
 
+func TestFirstSaleableMonthlyPlan(t *testing.T) {
+	monthlyPriceID := "price_team_monthly"
+	emptyPriceID := "  "
+	tests := []struct {
+		name         string
+		plans        []management.Plan
+		wantPlanID   string
+		wantInterval string
+	}{
+		{
+			name: "selects first self-service monthly plan",
+			plans: []management.Plan{
+				{ID: "1", Name: "Individual", ForSale: true},
+				{ID: "2", Name: "Team", ForSale: true, StripePriceIDMonthly: &monthlyPriceID},
+				{ID: "7", Name: "Business", ForSale: true, StripePriceIDMonthly: &monthlyPriceID},
+			},
+			wantPlanID:   "2",
+			wantInterval: "monthly",
+		},
+		{
+			name: "ignores plans without a usable monthly price",
+			plans: []management.Plan{
+				{ID: "1", Name: "Individual", ForSale: true},
+				{ID: "5", Name: "Enterprise", ForSale: true, StripePriceIDMonthly: &emptyPriceID},
+				{ID: "7", Name: "Business", ForSale: false, StripePriceIDMonthly: &monthlyPriceID},
+				{ID: "", Name: "Missing ID", ForSale: true, StripePriceIDMonthly: &monthlyPriceID},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotPlanID, gotInterval := firstSaleableMonthlyPlan(tt.plans)
+			if gotPlanID != tt.wantPlanID || gotInterval != tt.wantInterval {
+				t.Errorf(
+					"firstSaleableMonthlyPlan(%+v) = (%q, %q), want (%q, %q)",
+					tt.plans,
+					gotPlanID,
+					gotInterval,
+					tt.wantPlanID,
+					tt.wantInterval,
+				)
+			}
+		})
+	}
+}
+
 func TestPositiveAmount(t *testing.T) {
 	tests := []struct {
 		value   string
