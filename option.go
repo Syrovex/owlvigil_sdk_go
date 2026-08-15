@@ -280,10 +280,11 @@ func WithAccessTokenProvider(provider TokenProvider) Option {
 	}
 }
 
-// WithRetry configures retry attempts and wait duration for transient failures.
-func WithRetry(maxAttempts int, wait time.Duration) Option {
+// WithRetry configures the number of retries after the initial request and the
+// fixed wait duration between attempts for retryable failures.
+func WithRetry(maxRetries int, wait time.Duration) Option {
 	return func(c *Config) {
-		c.RetryMax = maxAttempts
+		c.RetryMax = maxRetries
 		c.RetryWait = wait
 	}
 }

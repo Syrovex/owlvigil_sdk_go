@@ -6,10 +6,13 @@
 
 Go SDK for OwlVigil Gateway model calls and Open API management workflows.
 
+Documentation: [English](docs/en-US/README.md) | [简体中文](docs/zh-CN/README.md)
+
 Gateway model calls use `https://gateway.owlvigil.com` with a Gateway key. OpenAPI Management calls use `https://api.owlvigil.com/v1` with a scoped service-account API key.
 
 ## Install
 
+<!-- evidence: go.mod, .env.example, scripts/check-docs.sh -->
 ```bash
 go get github.com/Syrovex/owlvigil_sdk_go
 ```
@@ -17,9 +20,10 @@ go get github.com/Syrovex/owlvigil_sdk_go
 ## Run examples
 
 Copy the complete example configuration, then set only the credentials needed
-by the example you want to run. The template contains Gateway, Management, and
-OAuth variable names without secrets.
+by the example you want to run. The template contains safe variable names and
+placeholders without secrets.
 
+<!-- evidence: go.mod, .env.example, scripts/check-docs.sh -->
 ```bash
 cp .env.example .env
 # Edit .env, then run an example.
@@ -29,6 +33,7 @@ go run ./examples/gateway-models/main.go
 You can also use shell variables instead of `.env`; exported values always take
 precedence over values in `.env`:
 
+<!-- evidence: go.mod, .env.example, scripts/check-docs.sh -->
 ```bash
 export OWLVIGIL_GATEWAY_KEY='your-gateway-key'
 go run ./examples/gateway-models/main.go
@@ -38,76 +43,50 @@ go run ./examples/gateway-models/main.go
 
 The runnable Gateway examples automatically load the nearest `.env` file without overriding environment variables that are already exported. Set `OWLVIGIL_GATEWAY_KEY` in the repository-root `.env`, then run `go run ./examples/gateway-models/main.go` directly.
 
+<!-- evidence: examples/compile_test.go, management/all_operations_usecase_test.go -->
 ```go
 client := gateway.NewClient(owlvigil.WithAPIKey(os.Getenv("OWLVIGIL_GATEWAY_KEY")))
 
 resp, meta, err := client.CreateChatCompletion(ctx, &gateway.ChatCompletionRequest{
-    Model: "gpt-4o-mini",
-    Messages: []gateway.Message{
-        {Role: "user", Content: "Say hello from OwlVigil."},
-    },
+	Model: "gpt-4o-mini",
+	Messages: []gateway.Message{
+		{Role: "user", Content: "Say hello from OwlVigil."},
+	},
 })
 if err != nil {
-    return err
+	return err
 }
 fmt.Println(meta.RequestID, resp.ID)
+
 ```
 
 ## Management Quickstart
 
+<!-- evidence: examples/compile_test.go, management/all_operations_usecase_test.go -->
 ```go
 client := management.NewClient(owlvigil.WithAPIKey(os.Getenv("OWLVIGIL_API_KEY")))
 
 keys, _, err := client.ListGatewayKeys(
-    ctx,
-    management.ListOptions{Limit: 20},
-    "",
-    owlvigil.WithWorkspaceID(workspaceID),
+	ctx,
+	management.ListOptions{Limit: 20},
+	"",
+	owlvigil.WithWorkspaceID(workspaceID),
 )
 if err != nil {
-    return err
+	return err
 }
 fmt.Println(keys.Items)
-```
 
-## OAuth2.0
-
-Use the OAuth2.0 helper for user authorization and Management API access tokens:
-
-```go
-auth := oauth2.NewClient(owlvigil.WithEnvironmentFromEnv())
-url, err := auth.AuthorizationURL(oauth2.AuthCodeOptions{
-    ClientID:    "client_123",
-    RedirectURI: "https://app.example.com/callback",
-    Scopes:      []string{"workspace:read", "gateway:write"},
-    State:       "state_123",
-})
 ```
 
 ## Docs
 
-- [Quickstart](docs/quickstart.md)
-- [Authentication](docs/authentication.md)
-- [Environments](docs/environments.md)
-- [Gateway](docs/gateway.md)
-- [Management](docs/management.md)
-- [Access control](docs/access-control.md)
-- [Model routing and providers](docs/model-routing.md)
-- [Financial governance](docs/financial-governance.md)
-- [Account settings](docs/account.md)
-- [Billing and subscriptions](docs/billing.md)
-- [Teams and members](docs/teams.md)
-- [OAuth2.0](docs/oauth2.md)
-- [Streaming](docs/streaming.md)
-- [Webhooks](docs/webhooks.md)
-- [Errors](docs/errors.md)
-- [Pagination](docs/pagination.md)
-- [Examples](docs/examples.md)
-- [Troubleshooting](docs/troubleshooting.md)
-- [Draft v0.1.0 release notes](docs/release-v0.1.0.md)
+- [English documentation](docs/en-US/README.md)
+- [简体中文文档](docs/zh-CN/README.md)
 
 ## Verify
 
+<!-- evidence: go.mod, .env.example, scripts/check-docs.sh -->
 ```bash
 sh scripts/check-docs.sh
 sh scripts/check-openapi-alignment.sh ../owlvigil_openapi
@@ -120,6 +99,7 @@ and example behavior against local `httptest` servers. To run the opt-in,
 read-only live smoke with
 credentials from `.env`, use:
 
+<!-- evidence: go.mod, .env.example, scripts/check-docs.sh -->
 ```bash
 sh scripts/test-live-readonly.sh
 ```

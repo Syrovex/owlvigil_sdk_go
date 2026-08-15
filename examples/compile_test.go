@@ -29,13 +29,14 @@ func TestExampleDirectoriesFindsEveryMainPackage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("exampleDirectories() error = %v", err)
 	}
-	if got, want := len(directories), 15; got != want {
+	if got, want := len(directories), 16; got != want {
 		t.Errorf("exampleDirectories() count = %d, want %d", got, want)
 	}
 	for _, want := range []string{
 		"./examples/gateway-models",
 		"./examples/management-usage",
 		"./examples/openapi-smoke",
+		"./examples/quickstart",
 		"./examples/webhook-verify",
 	} {
 		if !contains(directories, want) {

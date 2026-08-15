@@ -49,6 +49,10 @@ func TestAllExecutableManagementUseCasesPassRefactoredOpenAPIFacade(t *testing.T
 			query:  request.URL.RawQuery,
 			body:   body,
 		}
+		if request.Method == http.MethodDelete && request.URL.Path == "/internal/openapi/v1/workspaces/7" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"request_id": "req_fake_dashboard",

@@ -2,39 +2,35 @@
 
 set -eu
 
-required_docs='
-authentication
-environments
-gateway
-management
-access-control
-model-routing
-financial-governance
-account
-billing
-teams
-oauth2
-streaming
-webhooks
-errors
-pagination
-examples
-troubleshooting
-quickstart
-release-v0.1.0
+go run ./scripts/check-docs-api
+
+required_locale_docs='
+README
+01-quickstart
+02-concepts
+03-authentication-configuration
+04-gateway
+05-management
+06-management-access-and-keys
+07-management-operations
+08-webhooks
+09-errors-troubleshooting
+10-reference-examples
 '
 
-for name in $required_docs; do
-	file="docs/$name.md"
-	if [ ! -s "$file" ]; then
-		echo "missing or empty documentation file: $file" >&2
-		exit 1
-	fi
+for locale in en-US zh-CN; do
+	for name in $required_locale_docs; do
+		file="docs/$locale/$name.md"
+		if [ ! -s "$file" ]; then
+			echo "missing or empty $locale documentation file: $file" >&2
+			exit 1
+		fi
+	done
 done
 
-for name in $required_docs; do
-	if ! grep -Fq "docs/$name.md" README.md; then
-		echo "README is missing documentation link: docs/$name.md" >&2
+for locale in en-US zh-CN; do
+	if ! grep -Fq "docs/$locale/README.md" README.md; then
+		echo "README is missing $locale documentation entry" >&2
 		exit 1
 	fi
 done
@@ -62,20 +58,44 @@ workspaces
 '
 
 for domain in $domains; do
-	if ! grep -Fq "management/$domain.go" docs/management.md; then
-		echo "management guide is missing source domain: management/$domain.go" >&2
+	if ! grep -Fq "management/$domain.go" docs/en-US/*.md; then
+		echo "English guides are missing source domain: management/$domain.go" >&2
 		exit 1
 	fi
 done
 
-for source in README.md docs/*.md; do
-	for target in $(grep -Eo '\]\([A-Za-z0-9._/-]+\.md\)' "$source" | sed -e 's/^](/ /' -e 's/)$//' | tr -d ' '); do
+for source in README.md docs/en-US/*.md docs/zh-CN/*.md; do
+	for target in $(grep -Eo '\]\([A-Za-z0-9._/-]+\.md(#[^)]*)?\)' "$source" | sed -e 's/^](/ /' -e 's/)$//' -e 's/#.*$//' | tr -d ' '); do
 		case "$target" in
 		docs/*) candidate=$target ;;
 		*) candidate=$(dirname "$source")/$target ;;
 		esac
 		if [ ! -f "$candidate" ]; then
 			echo "broken Markdown link in $source: $target" >&2
+			exit 1
+		fi
+	done
+done
+
+for source in management/*.go; do
+	case "$source" in
+	*_test.go | management/client.go) continue ;;
+	esac
+	for method in $(sed -n 's/^func (c \*Client) \([A-Z][A-Za-z0-9]*\).*/\1/p' "$source"); do
+		if ! grep -Fq "\`$method\`" docs/en-US/10-reference-examples.md; then
+			echo "English API reference is missing Management method: $method" >&2
+			exit 1
+		fi
+		if ! grep -Fq "\`$method\`" docs/en-US/0[1-9]-*.md; then
+			echo "English task guides are missing Management method: $method" >&2
+			exit 1
+		fi
+		if ! grep -Fq "\`$method\`" docs/zh-CN/10-reference-examples.md; then
+			echo "Chinese API reference is missing Management method: $method" >&2
+			exit 1
+		fi
+		if ! grep -Fq "\`$method\`" docs/zh-CN/0[1-9]-*.md; then
+			echo "Chinese task guides are missing Management method: $method" >&2
 			exit 1
 		fi
 	done
