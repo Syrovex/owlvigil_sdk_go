@@ -55,6 +55,7 @@ Use `VerifySignature` in an event receiver. `SignPayload` is intended primarily 
 - Top-ups: `ListTopupPlans`, `CreateTopupCheckout`, `CreateTopupInApp`, `ConfirmTopupInApp`, `ListTopups`, `ListTopupsWithFilters`, `GetTopup`.
 - Payment methods: `ListPaymentMethods`, `ListPaymentMethodsForWorkspace`, `CreatePaymentMethodSetupIntent`, `CreatePaymentMethodSetupIntentForWorkspace`, `SavePaymentMethod`, `SetDefaultPaymentMethod`, `DeletePaymentMethod`, `DeletePaymentMethodWithResult`.
 - Orders: `ListOrders`, `ListOrdersWithFilters`, `GetOrder`, `ConfirmStripeSession`.
+- Workspace auto charge: `GetAutoCharge`, `UpdateAutoCharge`, `RetryAutoCharge`.
 
 #### Webhooks and account operations
 
@@ -99,6 +100,6 @@ Password, invitation, secondary-member, policy, Provider, and Stripe
 prerequisites are documented in `examples/openapi-smoke/README.md`. Run it only in an isolated
 workspace, never against a shared production workspace. Without that flag it
 checks read-only paths and records mutating operations as explicit skips; a
-skip is not reported as a pass. The catalog test locks the example to all 141
+skip is not reported as a pass. The catalog test locks the example to all 144
 published Management operations, while unit contract tests execute every SDK
 method against strict local HTTP fixtures.

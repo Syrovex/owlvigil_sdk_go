@@ -9,7 +9,7 @@ import (
 
 func TestClient_ExposesOnlyPublishedOpenAPIManagementMethods(t *testing.T) {
 	const (
-		publishedOperations = 141
+		publishedOperations = 144
 		convenienceMethods  = 34 // typed filters, workspace helpers, and response-preserving action variants
 		clientMethods       = 1  // BaseURL
 	)

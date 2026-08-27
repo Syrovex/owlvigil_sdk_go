@@ -60,6 +60,7 @@
 - Topup：`ListTopupPlans`, `CreateTopupCheckout`, `CreateTopupInApp`, `ConfirmTopupInApp`, `ListTopups`, `ListTopupsWithFilters`, `GetTopup`。
 - Payment methods：`ListPaymentMethods`, `ListPaymentMethodsForWorkspace`, `CreatePaymentMethodSetupIntent`, `CreatePaymentMethodSetupIntentForWorkspace`, `SavePaymentMethod`, `SetDefaultPaymentMethod`, `DeletePaymentMethod`, `DeletePaymentMethodWithResult`。
 - Orders：`ListOrders`, `ListOrdersWithFilters`, `GetOrder`, `ConfirmStripeSession`。
+- 工作区自动充值：`GetAutoCharge`, `UpdateAutoCharge`, `RetryAutoCharge`。
 
 #### Webhook 和账户
 

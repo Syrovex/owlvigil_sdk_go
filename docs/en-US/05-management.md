@@ -86,6 +86,11 @@ Endpoint-specific typed options expose the current Open API filters:
 `ListTopupsWithFilters`. Do not send undeclared filters: the Open API rejects
 unknown query parameters.
 
+Workspace automatic charging is managed with `GetAutoCharge`,
+`UpdateAutoCharge`, and `RetryAutoCharge`. Always pass the intended workspace
+ID; update and retry are payment mutations and must not be automatically
+replayed after an ambiguous timeout.
+
 Set `Limit` only when you want to override the service default; the SDK omits
 zero or negative limits. Treat `NextCursor` as opaque: persist and send it back
 unchanged, and never attempt to derive offsets from it. A list response may be

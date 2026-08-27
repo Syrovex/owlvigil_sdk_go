@@ -117,8 +117,11 @@ Management 提供三层观察数据：聚合用量回答“用了多少”，req
 - Topup：`ListTopupPlans`、`CreateTopupCheckout`、`CreateTopupInApp`、`ConfirmTopupInApp`、`ListTopups`、`ListTopupsWithFilters`、`GetTopup`。
 - Payment method：`ListPaymentMethods`、`ListPaymentMethodsForWorkspace`、`CreatePaymentMethodSetupIntent`、`CreatePaymentMethodSetupIntentForWorkspace`、`SavePaymentMethod`、`SetDefaultPaymentMethod`、`DeletePaymentMethod`、`DeletePaymentMethodWithResult`。
 - Order：`ListOrders`、`ListOrdersWithFilters`、`GetOrder`、`ConfirmStripeSession`。
+- 工作区自动充值：`GetAutoCharge`、`UpdateAutoCharge`、`RetryAutoCharge`。
 
-创建 checkout、确认支付、变更订阅和删除支付方式都可能产生外部副作用，且当前不支持幂等键自动重试。应用必须防止用户双击；超时后先读取订单或订阅状态，不得直接重放写请求。
+自动充值配置归属于 `WorkspaceID` 指定的工作区。当前触发阈值由服务端固定为 1 美元，调用方通过 `ChargeAmount` 设置每次充值金额，并遵守服务端公布的上下限。自动充值成功生成的 Topup 会把 `Source` 设为 `auto_charge`，并可能返回 `ReceiptURL`；历史记录可以不包含这两个兼容性新增字段。
+
+创建 checkout、确认支付、变更订阅、自动充值更新或重试，以及删除支付方式都可能产生外部副作用，且当前不支持幂等键自动重试。应用必须防止用户双击；超时后先读取订单、自动充值配置或订阅状态，不得直接重放写请求。
 
 ### 金额和状态
 

@@ -81,6 +81,10 @@ owlvigil.WithIdempotencyKey("gateway-key-create-primary-v1")
 
 列表方法通常接受 `ListOptions`，返回 `ListResponse[T]`。完整循环见[分页](05-management.md#分页)。全部公开方法见 [API 参考](10-reference-examples.md#api-参考)。
 
+工作区自动充值通过 `GetAutoCharge`、`UpdateAutoCharge` 和
+`RetryAutoCharge` 管理。必须明确传入目标工作区 ID；更新和重试属于支付写操作，
+请求结果不明确时不得自动重放。
+
 ## Management：工作区
 
 工作区是大多数 Management 资源的归属边界。接入 Management API 时，首先要确定当前业务租户对应的工作区 ID，而不是直接创建 Key。
