@@ -6,7 +6,7 @@
 
 Go SDK for OwlVigil Gateway model calls and Open API management workflows.
 
-Documentation: [English](docs/en-US/README.md) | [简体中文](docs/zh-CN/README.md)
+Documentation: [English](docs/en-US/README.md)
 
 Gateway model calls use `https://gateway.owlvigil.com` with a Gateway key. OpenAPI Management calls use `https://api.owlvigil.com/v1` with a scoped service-account API key.
 
@@ -82,7 +82,6 @@ fmt.Println(keys.Items)
 ## Docs
 
 - [English documentation](docs/en-US/README.md)
-- [简体中文文档](docs/zh-CN/README.md)
 
 ## Verify
 
