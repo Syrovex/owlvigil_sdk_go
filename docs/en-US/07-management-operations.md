@@ -158,6 +158,7 @@ Field-level signatures are published in the [management package documentation](h
 - Plans: `ListPlans`, `GetPlan`.
 - Current subscription: `GetSubscription`.
 - Billing: `GetBillingOverview`, `GetBillingOverviewForWorkspace`, `GetBillingDetails`.
+- Workspace auto charge: `GetAutoCharge`.
 - Top-ups and orders: `ListTopupPlans`, `ListTopups`, `GetTopup`, `ListOrders`, `GetOrder`.
 - Payment methods: `ListPaymentMethods`, `ListPaymentMethodsForWorkspace`.
 - Invoices: `ListInvoices`, `ListInvoicesForWorkspace`, `GetInvoice`, `GetInvoiceForWorkspace`.
@@ -166,7 +167,9 @@ Use the workspace-specific variant when the method signature requires a workspac
 
 ### Mutating workflows
 
-Subscription mutations include checkout and in-app creation, confirmation, upgrade, downgrade, cancellation, reactivation, and checkout synchronization. Top-up mutations include checkout and in-app creation and confirmation. Payment-method mutations include setup-intent creation, save, set-default, and delete.
+Subscription mutations include checkout and in-app creation, confirmation, upgrade, downgrade, cancellation, reactivation, and checkout synchronization. Top-up mutations include checkout and in-app creation and confirmation. Payment-method mutations include setup-intent creation, save, set-default, and delete. Auto-charge mutations use `UpdateAutoCharge` to enable, disable, or change the amount and `RetryAutoCharge` to explicitly retry an eligible failed charge. Both methods can create an external financial effect; never retry them automatically after an ambiguous response.
+
+Auto charge belongs to the workspace identified by `WorkspaceID`. The service currently fixes the trigger threshold at USD 1; callers choose `ChargeAmount` within the server-published limits. A successful auto-charge top-up exposes `Source` as `auto_charge` and may expose `ReceiptURL`; older records can omit both fields.
 
 For every payment mutation:
 
@@ -197,6 +200,7 @@ All example programs are compiled by `go test ./examples/...`. Request paths and
 - Quota, balance, and operational evidence: `GetQuota`, `GetBalance`, `ListAuditLogs`, `GetAuditLog`, `GetLoggingSettings`, `UpdateLoggingSettings`, `ListPayloadLogs`, `GetPayloadAccess`, `GetPayloadLog`.
 - Subscriptions: `CreateSubscriptionCheckout`, `CreateSubscriptionInApp`, `ConfirmSubscriptionInApp`, `UpgradeSubscription`, `DowngradeSubscription`, `CancelSubscription`, `CancelSubscriptionWithRequest`, `ReactivateSubscription`, `GetSubscriptionCheckoutSession`, `SyncLatestSubscriptionCheckout`.
 - Top-ups: `CreateTopupCheckout`, `CreateTopupInApp`, `ConfirmTopupInApp`.
+- Workspace auto charge: `UpdateAutoCharge`, `RetryAutoCharge`.
 - Payment methods: `CreatePaymentMethodSetupIntent`, `CreatePaymentMethodSetupIntentForWorkspace`, `SavePaymentMethod`, `SetDefaultPaymentMethod`, `DeletePaymentMethod`, `DeletePaymentMethodWithResult`.
 - Billing and order writes: `UpdateBillingDetails`, `ConfirmStripeSession`.
 

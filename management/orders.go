@@ -38,6 +38,8 @@ type Order struct {
 	OutTradeNo            string         `json:"out_trade_no,omitempty"`
 	PaymentType           string         `json:"payment_type,omitempty"`
 	PaymentTradeNo        string         `json:"payment_trade_no,omitempty"`
+	Source                string         `json:"source,omitempty"`
+	ReceiptURL            *string        `json:"receipt_url,omitempty"`
 	PayURL                *string        `json:"pay_url,omitempty"`
 	RechargeCode          string         `json:"recharge_code,omitempty"`
 	ProviderSnapshot      map[string]any `json:"provider_snapshot,omitempty"`
