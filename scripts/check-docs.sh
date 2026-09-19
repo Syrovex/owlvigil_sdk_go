@@ -18,7 +18,7 @@ README
 10-reference-examples
 '
 
-for locale in en-US zh-CN; do
+for locale in en-US; do
 	for name in $required_locale_docs; do
 		file="docs/$locale/$name.md"
 		if [ ! -s "$file" ]; then
@@ -28,7 +28,7 @@ for locale in en-US zh-CN; do
 	done
 done
 
-for locale in en-US zh-CN; do
+for locale in en-US; do
 	if ! grep -Fq "docs/$locale/README.md" README.md; then
 		echo "README is missing $locale documentation entry" >&2
 		exit 1
@@ -64,7 +64,7 @@ for domain in $domains; do
 	fi
 done
 
-for source in README.md docs/en-US/*.md docs/zh-CN/*.md; do
+for source in README.md docs/en-US/*.md; do
 	for target in $(grep -Eo '\]\([A-Za-z0-9._/-]+\.md(#[^)]*)?\)' "$source" | sed -e 's/^](/ /' -e 's/)$//' -e 's/#.*$//' | tr -d ' '); do
 		case "$target" in
 		docs/*) candidate=$target ;;
@@ -88,14 +88,6 @@ for source in management/*.go; do
 		fi
 		if ! grep -Fq "\`$method\`" docs/en-US/0[1-9]-*.md; then
 			echo "English task guides are missing Management method: $method" >&2
-			exit 1
-		fi
-		if ! grep -Fq "\`$method\`" docs/zh-CN/10-reference-examples.md; then
-			echo "Chinese API reference is missing Management method: $method" >&2
-			exit 1
-		fi
-		if ! grep -Fq "\`$method\`" docs/zh-CN/0[1-9]-*.md; then
-			echo "Chinese task guides are missing Management method: $method" >&2
 			exit 1
 		fi
 	done

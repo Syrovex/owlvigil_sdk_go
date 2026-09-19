@@ -12,8 +12,8 @@ if err != nil {
 	return
 }
 
-timestamp := r.Header.Get("OW-Webhook-Timestamp")
-signature := r.Header.Get("OW-Webhook-Signature")
+timestamp := r.Header.Get("OwlVigil-Timestamp")
+signature := r.Header.Get("OwlVigil-Signature")
 signatureHeader := "t=" + timestamp + "," + signature
 err = webhook.VerifySignature(
 	payload,

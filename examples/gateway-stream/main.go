@@ -18,7 +18,7 @@ func main() {
 	client := gateway.NewClient(owlvigil.WithAPIKey(os.Getenv("OWLVIGIL_GATEWAY_KEY")))
 
 	stream, err := client.CreateChatCompletionStream(context.Background(), &gateway.ChatCompletionRequest{
-		Model: "gpt-4o-mini",
+		Model: "deepseek-v4-flash",
 		Messages: []gateway.Message{
 			{Role: "user", Content: "Count to three."},
 		},

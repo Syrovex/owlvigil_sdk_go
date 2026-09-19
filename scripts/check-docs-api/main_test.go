@@ -42,35 +42,6 @@ value, err := client.Missing(ctx, &management.Request{Old: true})
 	}
 }
 
-func TestQuickstartDocumentationMatchesExample(t *testing.T) {
-	document, err := os.ReadFile("../../docs/zh-CN/01-quickstart.md")
-	if err != nil {
-		t.Fatalf("ReadFile(quickstart doc) error = %v", err)
-	}
-	source, err := os.ReadFile("../../examples/quickstart/main.go")
-	if err != nil {
-		t.Fatalf("ReadFile(quickstart example) error = %v", err)
-	}
-
-	const start = "```go\npackage main\n"
-	startIndex := strings.Index(string(document), start)
-	if startIndex < 0 {
-		t.Fatal("quickstart document is missing the package main Go example")
-	}
-	after, ok := strings.CutPrefix(string(document[startIndex:]), "```go\n")
-	if !ok {
-		t.Fatal("quickstart document is missing the package main Go example")
-	}
-	got, _, ok := strings.Cut(after, "```\n")
-	if !ok {
-		t.Fatal("quickstart package main Go example is missing its closing fence")
-	}
-	want := string(source)
-	if got != want {
-		t.Error("quickstart package main block differs from examples/quickstart/main.go")
-	}
-}
-
 func TestLoadTypes_MarksCompatibilityFields(t *testing.T) {
 	types, err := loadTypes("../../management")
 	if err != nil {

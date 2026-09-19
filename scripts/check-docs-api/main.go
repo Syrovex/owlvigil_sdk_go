@@ -142,7 +142,7 @@ func checkOtherExamples(path string) ([]string, error) {
 		evidence := evidenceRE.FindStringSubmatch(previous)
 		if evidence == nil {
 			failures = append(failures, fmt.Sprintf("%s:%d: %s example is missing an evidence marker", path, lineNumber, language))
-		} else {
+		} else if evidence != nil {
 			for _, evidencePath := range strings.Split(evidence[1], ",") {
 				evidencePath = strings.TrimSpace(evidencePath)
 				if evidencePath == "" {
@@ -370,7 +370,7 @@ func checkMarkdown(path string, apis map[string]map[string]apiType, methods map[
 				match := evidenceRE.FindStringSubmatch(previousNonEmpty)
 				if match == nil {
 					failures = append(failures, fmt.Sprintf("%s:%d: Go example is missing an evidence marker", path, lineNumber))
-				} else {
+				} else if match != nil {
 					for _, evidencePath := range strings.Split(match[1], ",") {
 						evidencePath = strings.TrimSpace(evidencePath)
 						if evidencePath == "" {
